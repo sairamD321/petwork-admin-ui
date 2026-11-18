@@ -1,0 +1,176 @@
+import { Alert, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { recordIdOf, type BlueprintAction } from '../../api/blueprint';
+import { deleteRecord, type DataRecord } from '../../api/records';
+import { actionIcon, actionLabel, isDeleteAction } from './actionDisplay';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
+import DataTableView from './DataTableView';
+import { useDataTable } from './useDataTable';
+
+// The form is only downloaded the first time someone opens it.
+const BlueprintFormPage = lazy(() => import('../form/BlueprintFormPage'));
+
+interface DataTablePageProps {
+  title: string;
+  tableBlueprintUrl: string;
+  searchBlueprintUrl?: string | null;
+}
+
+interface OpenForm {
+  title: string;
+  blueprintApi: string;
+  record?: DataRecord;
+  recordId?: string;
+}
+
+interface PendingDelete {
+  action: BlueprintAction;
+  recordId: string;
+  name: string;
+}
+
+const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Something went wrong.');
+
+/** Any menu page backed by a data table blueprint: header actions, records, and row actions. */
+export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprintUrl }: DataTablePageProps) {
+  const { state, reload, refresh } = useDataTable(tableBlueprintUrl, searchBlueprintUrl);
+  const [form, setForm] = useState<OpenForm | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const blueprint = state.status === 'ready' ? state.blueprint : null;
+
+  // The form is a page of its own: opening it adds a history entry, so the browser's
+  // Back button (and our Back buttons, via history.back) return to the list.
+  function openForm(next: OpenForm) {
+    window.history.pushState({ blueprintForm: true }, '');
+    window.scrollTo(0, 0);
+    setForm(next);
+  }
+  const closeForm = () => window.history.back();
+
+  useEffect(() => {
+    if (!form) return;
+    const onPop = () => setForm(null);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [form]);
+
+  function onHeaderAction(a: BlueprintAction) {
+    if (a.blueprintApi) openForm({ title: a.action, blueprintApi: a.blueprintApi });
+  }
+
+  function onRowAction(a: BlueprintAction, record: DataRecord, name: string) {
+    const recordId = recordIdOf(blueprint?.mappings, record);
+    if (isDeleteAction(a) && recordId) {
+      setDeleteError(null);
+      setPendingDelete({ action: a, recordId, name: name || recordId });
+    } else if (a.blueprintApi) {
+      openForm({ title: name || actionLabel(a), blueprintApi: a.blueprintApi, record, recordId });
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete?.action.dataApi) return;
+    setDeleting(true);
+    try {
+      await deleteRecord(pendingDelete.action.dataApi, pendingDelete.recordId);
+      setPendingDelete(null);
+      refresh();
+    } catch (err) {
+      setDeleteError(errorText(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (form) {
+    return (
+      <Suspense fallback={null}>
+        <BlueprintFormPage
+          title={form.title}
+          subtitle={form.record ? undefined : title}
+          blueprintApi={form.blueprintApi}
+          record={form.record}
+          fallbackRecordId={form.recordId}
+          onBack={closeForm}
+          onSaved={() => {
+            closeForm();
+            refresh();
+          }}
+        />
+      </Suspense>
+    );
+  }
+
+  return (
+    <Stack gap="lg">
+      <Group justify="space-between" align="center">
+        <Title order={2} c="indigo">
+          {title}
+        </Title>
+        <Group gap="sm">
+          {(blueprint?.actions ?? []).map((a) => {
+            const Icon = actionIcon(a);
+            return (
+              <Button
+                key={a.action}
+                leftSection={Icon ? <Icon size={18} /> : undefined}
+                title={a.action}
+                onClick={() => onHeaderAction(a)}
+              >
+                {actionLabel(a)}
+              </Button>
+            );
+          })}
+        </Group>
+      </Group>
+
+      {state.status === 'loading' && (
+        <Paper withBorder radius="lg" p="lg">
+          <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing="lg">
+            {Array.from({ length: 12 }, (_, i) => (
+              <Stack key={i} gap={8}>
+                <Skeleton style={{ aspectRatio: '1' }} radius="md" />
+                <Skeleton height={14} />
+                <Skeleton height={10} width="60%" />
+              </Stack>
+            ))}
+          </SimpleGrid>
+        </Paper>
+      )}
+
+      {state.status === 'error' && (
+        <Alert color="red" icon={<IconAlertCircle size={18} />} title="Couldn't load this page">
+          <Text size="sm" mb="sm">
+            {state.message}
+          </Text>
+          <Button size="xs" variant="light" color="red" onClick={reload}>
+            Try again
+          </Button>
+        </Alert>
+      )}
+
+      {state.status === 'ready' && (
+        <DataTableView
+          blueprint={state.blueprint}
+          records={state.records}
+          quickSearchFields={state.quickSearchFields}
+          onRowAction={onRowAction}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDeleteModal
+          name={pendingDelete.name}
+          deleting={deleting}
+          error={deleteError}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      )}
+    </Stack>
+  );
+}
