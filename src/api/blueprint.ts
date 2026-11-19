@@ -40,12 +40,22 @@ export interface DataTableBlueprint {
   mappings?: Record<string, string>;
 }
 
+/** One field of a search blueprint; `quickSearchFilter: true` puts it in the table's search bar. */
 export interface SearchField {
   field: string;
   displayName: string;
+  /** `dropDown` or `textBox`. */
   fieldType: string;
+  toolTip?: string;
   placeholder?: string;
+  editable?: boolean;
   quickSearchFilter?: boolean;
+  /** Options endpoint for dropdowns; `staticDropDownValues` is used when empty. */
+  api?: string;
+  staticDropDownValues?: Record<string, string>[];
+  dropdownCode?: string;
+  dropdownValue?: string;
+  rules?: FieldRule[];
 }
 
 /** GET {searchBluePrintUrl} */

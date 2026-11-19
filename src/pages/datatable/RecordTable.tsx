@@ -10,6 +10,8 @@ interface RecordTableProps {
   rowKey: (record: DataRecord, index: number) => string;
   /** Row-level action buttons; omit to hide the actions column. */
   renderActions?: (record: DataRecord) => ReactNode;
+  /** Rows to highlight, e.g. search matches. */
+  isHighlighted?: (record: DataRecord) => boolean;
 }
 
 /** Columns with `mobileDisplay: false` are hidden on small screens. */
@@ -17,7 +19,7 @@ function responsive(column: GridColumn) {
   return column.mobileDisplay === false ? { visibleFrom: 'sm' as const } : {};
 }
 
-export default function RecordTable({ columns, records, rowKey, renderActions }: RecordTableProps) {
+export default function RecordTable({ columns, records, rowKey, renderActions, isHighlighted }: RecordTableProps) {
   return (
     <Table.ScrollContainer minWidth={600}>
       <Table verticalSpacing="sm" highlightOnHover>
@@ -33,7 +35,10 @@ export default function RecordTable({ columns, records, rowKey, renderActions }:
         </Table.Thead>
         <Table.Tbody>
           {records.map((record, i) => (
-            <Table.Tr key={rowKey(record, i)}>
+            <Table.Tr
+              key={rowKey(record, i)}
+              bg={isHighlighted?.(record) ? 'var(--mantine-primary-color-light)' : undefined}
+            >
               {columns.map((c) => {
                 const value = record[c.field];
                 return (

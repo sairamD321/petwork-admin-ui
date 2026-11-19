@@ -15,11 +15,20 @@ interface RecordCardProps {
   fields: CardField[];
   /** Row-level action buttons, shown at the bottom right. */
   actions?: ReactNode;
+  /** Outlines the card, e.g. for a search match. */
+  highlighted?: boolean;
 }
 
-export default function RecordCard({ title, imageUrl, fields, actions }: RecordCardProps) {
+export default function RecordCard({ title, imageUrl, fields, actions, highlighted }: RecordCardProps) {
   return (
-    <Stack gap={4} h="100%">
+    <Stack
+      gap={4}
+      h="100%"
+      p={highlighted ? 6 : undefined}
+      m={highlighted ? -6 : undefined}
+      bg={highlighted ? 'var(--mantine-primary-color-light)' : undefined}
+      style={highlighted ? { borderRadius: 'var(--mantine-radius-md)' } : undefined}
+    >
       <AspectRatio ratio={1}>
         <Box
           bg="var(--mantine-color-default-hover)"

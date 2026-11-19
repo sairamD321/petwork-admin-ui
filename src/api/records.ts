@@ -45,6 +45,26 @@ export function clearRecordsCache() {
   optionsCache.clear();
 }
 
+/** Page size for filtered searches. */
+export const SEARCH_PAGE_SIZE = 20;
+
+/**
+ * GET `{dataApi}?field=value&...&page={page}&size=20` — the backend does the filtering.
+ * Not cached: filters change with every keystroke and results must stay fresh.
+ */
+export async function searchRecords(
+  dataApi: string,
+  filters: Record<string, string>,
+  page: number,
+): Promise<DataRecord[]> {
+  const path = resolveApiPath(dataApi);
+  const params = new URLSearchParams(filters);
+  params.set('page', String(page));
+  params.set('size', String(SEARCH_PAGE_SIZE));
+  const sep = path.includes('?') ? '&' : '?';
+  return toRecords(await apiRequest<unknown>(`${path}${sep}${params}`));
+}
+
 /** POST a new record to a form blueprint's `createApi`. */
 export function createRecord(createApi: string, body: FormData) {
   return apiRequest<unknown>(resolveApiPath(createApi), { method: 'POST', body });

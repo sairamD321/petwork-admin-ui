@@ -1,5 +1,4 @@
-import { Group, Paper, SegmentedControl, SimpleGrid, Text, TextInput } from '@mantine/core';
-import { IconSearch } from '@tabler/icons-react';
+import { Button, Center, Group, Loader, Paper, SegmentedControl, SimpleGrid, Text } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import {
   recordIdOf,
@@ -10,9 +9,12 @@ import {
 } from '../../api/blueprint';
 import type { DataRecord } from '../../api/records';
 import { formatValue, isImageUrl } from './cellValue';
+import { activeFilters, isDropdown, type QuickSearch } from './quickSearch';
+import QuickSearchBar from './QuickSearchBar';
 import RecordCard from './RecordCard';
 import RecordTable from './RecordTable';
 import RowActions from './RowActions';
+import { useSearchResults } from './useSearchResults';
 
 interface DataTableViewProps {
   blueprint: DataTableBlueprint;
@@ -27,7 +29,7 @@ const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
 /** Renders records exactly as the blueprint describes: columns, display mode and search fields. */
 export default function DataTableView({ blueprint, records, quickSearchFields, onRowAction }: DataTableViewProps) {
   const [mode, setMode] = useState<DisplayMode>(blueprint.defaultDisplayMode ?? 'table');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState<QuickSearch>({});
 
   const columns = useMemo(() => blueprint.dataGrid.filter((c) => c.display !== false), [blueprint]);
 
@@ -49,13 +51,23 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
     ? (r: DataRecord) => <RowActions actions={rowActions} onAction={(a) => onRowAction(a, r, titleOf(r))} />
     : undefined;
 
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return records;
-    return records.filter((r) =>
-      quickSearchFields.some((f) => formatValue(r[f.field]).toLowerCase().includes(q)),
-    );
-  }, [records, search, quickSearchFields]);
+  // Any active filter is sent to the backend: {dataApi}?field=value&page=0&size=20.
+  const filters = useMemo(() => activeFilters(quickSearchFields, search), [quickSearchFields, search]);
+  const typing = quickSearchFields.some((f) => !isDropdown(f) && filters[f.field] !== undefined);
+  // `records` changes after a save/delete refresh, which refetches the search too.
+  const { results, loadMore } = useSearchResults(blueprint.dataApi, filters, typing, records);
+
+  const visible =
+    results.status === 'idle' ? records
+    : results.status === 'error' ? []
+    : (results.records ?? []);
+  const loading = results.status === 'loading';
+  const resultHint =
+    results.status === 'loading' ? 'Searching...'
+    : results.status === 'error' ? 'Search failed'
+    : results.status === 'ready'
+      ? `${results.records.length}${results.hasMore ? '+' : ''} result${results.records.length === 1 ? '' : 's'}`
+    : undefined;
 
   const modes = blueprint.availableDisplayModes ?? [];
   const showModeSwitch = !!blueprint.enableMultipleDisplayModes && modes.length > 1;
@@ -64,16 +76,13 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
   return (
     <Paper withBorder radius="lg" p="lg">
       {(showSearch || showModeSwitch) && (
-        <Group justify="space-between" mb="lg" gap="sm">
+        <Group justify="space-between" align="flex-start" mb="lg" gap="sm" wrap="nowrap">
           {showSearch && (
-            <TextInput
-              placeholder={`Search by ${quickSearchFields.map((f) => f.displayName).join(', ')}...`}
-              leftSection={<IconSearch size={18} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              variant="unstyled"
-              style={{ flex: 1, minWidth: 160 }}
-              aria-label="Search"
+            <QuickSearchBar
+              fields={quickSearchFields}
+              search={search}
+              onChange={setSearch}
+              resultHint={resultHint}
             />
           )}
           {showModeSwitch && (
@@ -82,24 +91,45 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
         </Group>
       )}
 
-      {visible.length === 0 ? (
-        <Text c="dimmed" ta="center" py="xl">
-          {records.length === 0 ? 'Nothing here yet.' : 'No results match your search.'}
+      {results.status === 'error' ? (
+        <Text c="red" ta="center" py="xl">
+          {results.message}
         </Text>
-      ) : mode === 'cards' ? (
-        <SimpleGrid cols={GRID_COLS} spacing="lg" verticalSpacing="xl">
-          {visible.map((r, i) => (
-            <RecordCard
-              key={rowKey(r, i)}
-              title={titleOf(r)}
-              imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : undefined}
-              fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
-              actions={renderActions?.(r)}
-            />
-          ))}
-        </SimpleGrid>
+      ) : loading && !results.records ? (
+        <Center py="xl">
+          <Loader size="sm" />
+        </Center>
+      ) : visible.length === 0 ? (
+        <Text c="dimmed" ta="center" py="xl">
+          {results.status === 'idle' ? 'Nothing here yet.' : 'No results match your search.'}
+        </Text>
       ) : (
-        <RecordTable columns={columns} records={visible} rowKey={rowKey} renderActions={renderActions} />
+        // Previous results stay visible, dimmed, while a new search loads.
+        <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+          {mode === 'cards' ? (
+            <SimpleGrid cols={GRID_COLS} spacing="lg" verticalSpacing="xl">
+              {visible.map((r, i) => (
+                <RecordCard
+                  key={rowKey(r, i)}
+                  title={titleOf(r)}
+                  imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : undefined}
+                  fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
+                  actions={renderActions?.(r)}
+                />
+              ))}
+            </SimpleGrid>
+          ) : (
+            <RecordTable columns={columns} records={visible} rowKey={rowKey} renderActions={renderActions} />
+          )}
+        </div>
+      )}
+
+      {results.status === 'ready' && results.hasMore && (
+        <Center mt="lg">
+          <Button variant="light" onClick={loadMore} loading={results.loadingMore}>
+            Load more
+          </Button>
+        </Center>
       )}
     </Paper>
   );
