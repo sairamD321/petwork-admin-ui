@@ -8,6 +8,7 @@ interface RecordTableProps {
   columns: GridColumn[];
   records: DataRecord[];
   rowKey: (record: DataRecord, index: number) => string;
+  onRecordClick: (record: DataRecord) => void;
   /** Row-level action buttons; omit to hide the actions column. */
   renderActions?: (record: DataRecord) => ReactNode;
 }
@@ -17,7 +18,13 @@ function responsive(column: GridColumn) {
   return column.mobileDisplay === false ? { visibleFrom: 'sm' as const } : {};
 }
 
-export default function RecordTable({ columns, records, rowKey, renderActions }: RecordTableProps) {
+export default function RecordTable({
+  columns,
+  records,
+  rowKey,
+  onRecordClick,
+  renderActions,
+}: RecordTableProps) {
   return (
     <Table.ScrollContainer minWidth={600}>
       <Table verticalSpacing="sm" highlightOnHover>
@@ -33,7 +40,20 @@ export default function RecordTable({ columns, records, rowKey, renderActions }:
         </Table.Thead>
         <Table.Tbody>
           {records.map((record, i) => (
-            <Table.Tr key={rowKey(record, i)}>
+            <Table.Tr
+              key={rowKey(record, i)}
+              tabIndex={0}
+              aria-label="Edit record"
+              onClick={() => onRecordClick(record)}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onRecordClick(record);
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               {columns.map((c) => {
                 const value = record[c.field];
                 return (

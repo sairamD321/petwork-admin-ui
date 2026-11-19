@@ -17,12 +17,29 @@ export default function RowActions({ actions, onAction }: RowActionsProps) {
         const color = isDeleteAction(a) ? 'red' : undefined;
         return Icon ? (
           <Tooltip key={a.action} label={label} withArrow>
-            <ActionIcon variant="subtle" color={color} aria-label={label} onClick={() => onAction(a)}>
+            <ActionIcon
+              variant="subtle"
+              color={color}
+              aria-label={label}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction(a);
+              }}
+            >
               <Icon size={18} />
             </ActionIcon>
           </Tooltip>
         ) : (
-          <Button key={a.action} variant="subtle" size="compact-xs" color={color} onClick={() => onAction(a)}>
+          <Button
+            key={a.action}
+            variant="subtle"
+            size="compact-xs"
+            color={color}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction(a);
+            }}
+          >
             {label}
           </Button>
         );

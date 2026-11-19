@@ -1,4 +1,4 @@
-import { Group, Paper, SegmentedControl, SimpleGrid, Text, TextInput } from '@mantine/core';
+import { Button, Group, Paper, SegmentedControl, SimpleGrid, Text, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import {
@@ -18,14 +18,44 @@ interface DataTableViewProps {
   blueprint: DataTableBlueprint;
   records: DataRecord[];
   quickSearchFields: SearchField[];
+  page: number;
+  hasNext: boolean;
+  pageLoading: boolean;
+  onPageChange: (page: number) => void;
+  onRecordClick: (record: DataRecord, name: string) => void;
   /** A row action was clicked; `name` is the record's display title. */
   onRowAction: (action: BlueprintAction, record: DataRecord, name: string) => void;
 }
 
 const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
 
+function hasMainImage(value: unknown): value is { mainImage: string; isDefault?: unknown } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'mainImage' in value &&
+    isImageUrl(value.mainImage)
+  );
+}
+
+function variantImageUrlOf(record: DataRecord): string | undefined {
+  if (!Array.isArray(record.variants)) return undefined;
+  const variants = record.variants.filter(hasMainImage);
+  return variants.find((variant) => variant.isDefault === true)?.mainImage ?? variants[0]?.mainImage;
+}
+
 /** Renders records exactly as the blueprint describes: columns, display mode and search fields. */
-export default function DataTableView({ blueprint, records, quickSearchFields, onRowAction }: DataTableViewProps) {
+export default function DataTableView({
+  blueprint,
+  records,
+  quickSearchFields,
+  page,
+  hasNext,
+  pageLoading,
+  onPageChange,
+  onRecordClick,
+  onRowAction,
+}: DataTableViewProps) {
   const [mode, setMode] = useState<DisplayMode>(blueprint.defaultDisplayMode ?? 'table');
   const [search, setSearch] = useState('');
 
@@ -67,10 +97,13 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
         <Group justify="space-between" mb="lg" gap="sm">
           {showSearch && (
             <TextInput
-              placeholder={`Search by ${quickSearchFields.map((f) => f.displayName).join(', ')}...`}
+              placeholder={`Search this page by ${quickSearchFields.map((f) => f.displayName).join(', ')}...`}
               leftSection={<IconSearch size={18} />}
               value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
+              onChange={(e) => {
+                setSearch(e.currentTarget.value);
+                onPageChange(0);
+              }}
               variant="unstyled"
               style={{ flex: 1, minWidth: 160 }}
               aria-label="Search"
@@ -92,14 +125,39 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
             <RecordCard
               key={rowKey(r, i)}
               title={titleOf(r)}
-              imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : undefined}
+              imageUrl={
+                imageField && isImageUrl(r[imageField]) ? r[imageField] : variantImageUrlOf(r)
+              }
               fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
+              onClick={() => onRecordClick(r, titleOf(r))}
               actions={renderActions?.(r)}
             />
           ))}
         </SimpleGrid>
       ) : (
-        <RecordTable columns={columns} records={visible} rowKey={rowKey} renderActions={renderActions} />
+        <RecordTable
+          columns={columns}
+          records={visible}
+          rowKey={rowKey}
+          onRecordClick={(record) => onRecordClick(record, titleOf(record))}
+          renderActions={renderActions}
+        />
+      )}
+
+      {(page > 0 || hasNext) && (
+        <Group justify="flex-end" mt="lg">
+          <Button
+            variant="default"
+            disabled={page === 0 || pageLoading}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Previous
+          </Button>
+          <Text size="sm">Page {page + 1}</Text>
+          <Button disabled={!hasNext || pageLoading} onClick={() => onPageChange(page + 1)}>
+            Next
+          </Button>
+        </Group>
       )}
     </Paper>
   );
