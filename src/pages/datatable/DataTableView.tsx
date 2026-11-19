@@ -20,14 +20,44 @@ interface DataTableViewProps {
   blueprint: DataTableBlueprint;
   records: DataRecord[];
   quickSearchFields: SearchField[];
+  page: number;
+  hasNext: boolean;
+  pageLoading: boolean;
+  onPageChange: (page: number) => void;
+  onRecordClick: (record: DataRecord, name: string) => void;
   /** A row action was clicked; `name` is the record's display title. */
   onRowAction: (action: BlueprintAction, record: DataRecord, name: string) => void;
 }
 
 const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
 
+function hasMainImage(value: unknown): value is { mainImage: string; isDefault?: unknown } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'mainImage' in value &&
+    isImageUrl(value.mainImage)
+  );
+}
+
+function variantImageUrlOf(record: DataRecord): string | undefined {
+  if (!Array.isArray(record.variants)) return undefined;
+  const variants = record.variants.filter(hasMainImage);
+  return variants.find((variant) => variant.isDefault === true)?.mainImage ?? variants[0]?.mainImage;
+}
+
 /** Renders records exactly as the blueprint describes: columns, display mode and search fields. */
-export default function DataTableView({ blueprint, records, quickSearchFields, onRowAction }: DataTableViewProps) {
+export default function DataTableView({
+  blueprint,
+  records,
+  quickSearchFields,
+  page,
+  hasNext,
+  pageLoading,
+  onPageChange,
+  onRecordClick,
+  onRowAction,
+}: DataTableViewProps) {
   const [mode, setMode] = useState<DisplayMode>(blueprint.defaultDisplayMode ?? 'table');
   const [search, setSearch] = useState<QuickSearch>({});
 
@@ -104,32 +134,52 @@ export default function DataTableView({ blueprint, records, quickSearchFields, o
           {results.status === 'idle' ? 'Nothing here yet.' : 'No results match your search.'}
         </Text>
       ) : (
-        // Previous results stay visible, dimmed, while a new search loads.
-        <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+        // Previous results stay visible, dimmed, while a new search or page loads.
+        <div style={{ opacity: loading || pageLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
           {mode === 'cards' ? (
             <SimpleGrid cols={GRID_COLS} spacing="lg" verticalSpacing="xl">
               {visible.map((r, i) => (
                 <RecordCard
                   key={rowKey(r, i)}
                   title={titleOf(r)}
-                  imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : undefined}
+                  imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : variantImageUrlOf(r)}
                   fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
+                  onClick={() => onRecordClick(r, titleOf(r))}
                   actions={renderActions?.(r)}
                 />
               ))}
             </SimpleGrid>
           ) : (
-            <RecordTable columns={columns} records={visible} rowKey={rowKey} renderActions={renderActions} />
+            <RecordTable
+              columns={columns}
+              records={visible}
+              rowKey={rowKey}
+              onRecordClick={(record) => onRecordClick(record, titleOf(record))}
+              renderActions={renderActions}
+            />
           )}
         </div>
       )}
 
+      {/* Searching pages with "Load more"; the unfiltered list pages with Previous / Next. */}
       {results.status === 'ready' && results.hasMore && (
         <Center mt="lg">
           <Button variant="light" onClick={loadMore} loading={results.loadingMore}>
             Load more
           </Button>
         </Center>
+      )}
+
+      {results.status === 'idle' && (page > 0 || hasNext) && (
+        <Group justify="flex-end" mt="lg">
+          <Button variant="default" disabled={page === 0 || pageLoading} onClick={() => onPageChange(page - 1)}>
+            Previous
+          </Button>
+          <Text size="sm">Page {page + 1}</Text>
+          <Button disabled={!hasNext || pageLoading} onClick={() => onPageChange(page + 1)}>
+            Next
+          </Button>
+        </Group>
       )}
     </Paper>
   );

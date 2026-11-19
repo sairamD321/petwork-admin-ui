@@ -14,6 +14,8 @@ export type DataTableState =
       status: 'ready';
       blueprint: DataTableBlueprint;
       records: DataRecord[];
+      page: number;
+      hasNext: boolean;
       /** Fields the search box covers (`quickSearchFilter` in the search blueprint). */
       quickSearchFields: SearchField[];
     };
@@ -22,13 +24,14 @@ export type DataTableState =
 export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: string | null) {
   const [state, setState] = useState<DataTableState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const table = fetchDataTableBlueprint(tableBlueprintUrl).then(async (blueprint) => ({
       blueprint,
-      records: await fetchRecords(blueprint.dataApi),
+      result: await fetchRecords(blueprint.dataApi, page),
     }));
     // Search is optional: if its blueprint fails, still show the table without a search box.
     const search = searchBlueprintUrl
@@ -38,8 +41,17 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
       : Promise.resolve([]);
 
     Promise.all([table, search])
-      .then(([{ blueprint, records }, quickSearchFields]) => {
-        if (!cancelled) setState({ status: 'ready', blueprint, records, quickSearchFields });
+      .then(([{ blueprint, result }, quickSearchFields]) => {
+        if (!cancelled) {
+          setState({
+            status: 'ready',
+            blueprint,
+            records: result.records,
+            page,
+            hasNext: result.hasNext,
+            quickSearchFields,
+          });
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -53,10 +65,11 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
     return () => {
       cancelled = true;
     };
-  }, [tableBlueprintUrl, searchBlueprintUrl, attempt]);
+  }, [tableBlueprintUrl, searchBlueprintUrl, attempt, page]);
 
   const reload = useCallback(() => {
     setState({ status: 'loading' });
+    setPage(0);
     setAttempt((n) => n + 1);
   }, []);
 
@@ -64,8 +77,15 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
   const dataApi = state.status === 'ready' ? state.blueprint.dataApi : undefined;
   const refresh = useCallback(() => {
     if (dataApi) invalidateRecords(dataApi);
+    setPage(0);
     setAttempt((n) => n + 1);
   }, [dataApi]);
 
-  return { state, reload, refresh };
+  const goToPage = useCallback((nextPage: number) => {
+    if (nextPage >= 0) setPage(nextPage);
+  }, []);
+
+  const pageLoading = state.status === 'ready' && state.page !== page;
+
+  return { state, reload, refresh, goToPage, pageLoading };
 }

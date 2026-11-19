@@ -3,7 +3,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { recordIdOf, type BlueprintAction } from '../../api/blueprint';
 import { deleteRecord, type DataRecord } from '../../api/records';
-import { actionIcon, actionLabel, isDeleteAction } from './actionDisplay';
+import { actionIcon, actionLabel, isDeleteAction, isEditAction } from './actionDisplay';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
 import { useDataTable } from './useDataTable';
@@ -34,7 +34,10 @@ const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Somet
 
 /** Any menu page backed by a data table blueprint: header actions, records, and row actions. */
 export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprintUrl }: DataTablePageProps) {
-  const { state, reload, refresh } = useDataTable(tableBlueprintUrl, searchBlueprintUrl);
+  const { state, reload, refresh, goToPage, pageLoading } = useDataTable(
+    tableBlueprintUrl,
+    searchBlueprintUrl,
+  );
   const [form, setForm] = useState<OpenForm | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -67,7 +70,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     if (isDeleteAction(a) && recordId) {
       setDeleteError(null);
       setPendingDelete({ action: a, recordId, name: name || recordId });
-    } else if (a.blueprintApi) {
+    } else if (a.blueprintApi && recordId) {
       openForm({ title: name || actionLabel(a), blueprintApi: a.blueprintApi, record, recordId });
     }
   }
@@ -158,6 +161,16 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
           blueprint={state.blueprint}
           records={state.records}
           quickSearchFields={state.quickSearchFields}
+          page={state.page}
+          hasNext={state.hasNext}
+          pageLoading={pageLoading}
+          onPageChange={goToPage}
+          onRecordClick={(record, name) => {
+            const editAction = state.blueprint.rowLevelactions?.find(
+              (action) => isEditAction(action) && !!action.blueprintApi,
+            );
+            if (editAction) onRowAction(editAction, record, name);
+          }}
           onRowAction={onRowAction}
         />
       )}

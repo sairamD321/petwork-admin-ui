@@ -1,6 +1,10 @@
 import { getSession, notifyUnauthorized } from './session';
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const BASE_URL =
+  import.meta.env.DEV && API_BASE_URL
+    ? '/__api'
+    : API_BASE_URL.replace(/\/+$/, '');
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class ApiError extends Error {

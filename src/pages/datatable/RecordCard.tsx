@@ -11,53 +11,61 @@ export interface CardField {
 interface RecordCardProps {
   title: string;
   imageUrl?: string;
+  onClick: () => void;
   /** Extra label/value lines under the title. */
   fields: CardField[];
   /** Row-level action buttons, shown at the bottom right. */
   actions?: ReactNode;
-  /** Outlines the card, e.g. for a search match. */
-  highlighted?: boolean;
 }
 
-export default function RecordCard({ title, imageUrl, fields, actions, highlighted }: RecordCardProps) {
+export default function RecordCard({ title, imageUrl, onClick, fields, actions }: RecordCardProps) {
   return (
-    <Stack
-      gap={4}
-      h="100%"
-      p={highlighted ? 6 : undefined}
-      m={highlighted ? -6 : undefined}
-      bg={highlighted ? 'var(--mantine-primary-color-light)' : undefined}
-      style={highlighted ? { borderRadius: 'var(--mantine-radius-md)' } : undefined}
-    >
-      <AspectRatio ratio={1}>
-        <Box
-          bg="var(--mantine-color-default-hover)"
-          style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
-        >
-          {imageUrl ? (
-            <Image src={imageUrl} alt={title} h="100%" w="100%" fit="contain" loading="lazy" />
-          ) : (
-            <Center h="100%">
-              <IconPhotoOff size={32} color="var(--mantine-color-dimmed)" />
-            </Center>
-          )}
-        </Box>
-      </AspectRatio>
+    <Stack gap={4} h="100%">
+      <Stack
+        gap={4}
+        role="button"
+        tabIndex={0}
+        aria-label={`Edit ${title}`}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        <AspectRatio ratio={1}>
+          <Box
+            bg="var(--mantine-color-default-hover)"
+            style={{ borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
+          >
+            {imageUrl ? (
+              <Image src={imageUrl} alt={title} h="100%" w="100%" fit="contain" loading="lazy" />
+            ) : (
+              <Center h="100%">
+                <IconPhotoOff size={32} color="var(--mantine-color-dimmed)" />
+              </Center>
+            )}
+          </Box>
+        </AspectRatio>
 
-      <Text fw={500} truncate title={title} mt={6}>
-        {title}
-      </Text>
+        <Text fw={500} truncate title={title} mt={6}>
+          {title}
+        </Text>
 
-      {fields.map((f) => (
-        <Group key={f.label} gap={6} wrap="nowrap">
-          <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-            {f.label}
-          </Text>
-          <Text size="xs" truncate>
-            {formatValue(f.value)}
-          </Text>
-        </Group>
-      ))}
+        {fields.map((f) => (
+          <Group key={f.label} gap={6} wrap="nowrap">
+            <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+              {f.label}
+            </Text>
+            <Text size="xs" truncate>
+              {formatValue(f.value)}
+            </Text>
+          </Group>
+        ))}
+      </Stack>
 
       {actions && (
         <Group justify="flex-end" mt="auto" pt={4}>

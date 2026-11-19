@@ -35,3 +35,9 @@ export function actionLabel(a: BlueprintAction): string {
 
 /** Row actions that call `dataApi` with action `delete` remove the record (after confirming). */
 export const isDeleteAction = (a: BlueprintAction) => a.action.toLowerCase() === 'delete' && !!a.dataApi;
+
+/** Edit actions may use a different backend action name but still expose an edit icon or label. */
+export const isEditAction = (a: BlueprintAction) =>
+  a.action.trim().toLowerCase() === 'edit' ||
+  actionLabel(a).trim().toLowerCase() === 'edit' ||
+  actionIcon(a) === IconPencil;
