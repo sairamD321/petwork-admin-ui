@@ -88,7 +88,7 @@ export function clearRecordsCache() {
 export const SEARCH_PAGE_SIZE = 20;
 
 /**
- * GET `{dataApi}?field=value&...&page={page}&size=20` — the backend does the filtering.
+ * GET `{dataApi}?field=value&...&page={page}&size=20` â€” the backend does the filtering.
  * Not cached: filters change with every keystroke and results must stay fresh.
  */
 export async function searchRecords(
@@ -105,12 +105,28 @@ export async function searchRecords(
 }
 
 /** POST a new record to a form blueprint's `createApi`. */
-export function createRecord(createApi: string, body: FormData) {
+export function createRecord(createApi: string, body: Record<string, unknown> | FormData) {
   return apiRequest<unknown>(resolveApiPath(createApi), { method: 'POST', body });
 }
 
+/**
+ * GET one record's full details through a form blueprint's `dataApi`, for prefilling the edit form.
+ * Accepts the record itself or an envelope: `{ records: [..] }`, `{ record }` or `{ data }`.
+ */
+export async function fetchRecord(dataApi: string, recordId: string): Promise<DataRecord> {
+  const body = await apiRequest<unknown>(resolveRecordPath(dataApi, recordId));
+  const isObject = (v: unknown): v is DataRecord => !!v && typeof v === 'object' && !Array.isArray(v);
+  if (Array.isArray(body)) return isObject(body[0]) ? body[0] : {};
+  if (!isObject(body)) return {};
+  const records = body.records;
+  if (Array.isArray(records)) return isObject(records[0]) ? records[0] : {};
+  if (isObject(body.record)) return body.record;
+  if (isObject(body.data)) return body.data;
+  return body;
+}
+
 /** PUT changes to a record through a form blueprint's `dataApi`. */
-export function updateRecord(dataApi: string, recordId: string, body: Record<string, unknown>) {
+export function updateRecord(dataApi: string, recordId: string, body: Record<string, unknown> | FormData) {
   return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'PUT', body });
 }
 

@@ -1,5 +1,6 @@
-import { Grid } from '@mantine/core';
+import { Grid, Stack } from '@mantine/core';
 import type { FormFieldDef } from '../../api/blueprint';
+import ExistingImages from './ExistingImages';
 import FormField from './FormField';
 import { isWideField } from './formLayout';
 import type { GroupItem } from './formRules';
@@ -36,14 +37,17 @@ export default function SectionFields({ fields, form, editing, narrow }: Section
                 onChange={(items) => form.setValue(f.field, items)}
               />
             ) : (
-              <FormField
-                field={f}
-                value={form.values[f.field] ?? null}
-                error={form.errors[f.field]}
-                disabled={locked || fileOnEdit}
-                note={fileOnEdit ? "Images can't be changed while editing yet." : undefined}
-                onChange={(v) => form.setValue(f.field, v)}
-              />
+              <Stack gap="sm">
+                {fileOnEdit && <ExistingImages urls={form.images[f.field] ?? []} />}
+                <FormField
+                  field={f}
+                  value={form.values[f.field] ?? null}
+                  error={form.errors[f.field]}
+                  disabled={locked || fileOnEdit}
+                  note={fileOnEdit ? "Images can't be changed while editing yet." : undefined}
+                  onChange={(v) => form.setValue(f.field, v)}
+                />
+              </Stack>
             )}
           </Grid.Col>
         );

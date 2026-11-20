@@ -1,4 +1,4 @@
-import { Avatar, Table, Text } from '@mantine/core';
+import { Box, Image, Table, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import type { GridColumn } from '../../api/blueprint';
 import type { DataRecord } from '../../api/records';
@@ -11,6 +11,23 @@ interface RecordTableProps {
   onRecordClick: (record: DataRecord) => void;
   /** Row-level action buttons; omit to hide the actions column. */
   renderActions?: (record: DataRecord) => ReactNode;
+  /** The picture column; when its value isn't an image URL, `imageOf` supplies one (as in cards). */
+  imageField?: string;
+  imageOf?: (record: DataRecord) => string | undefined;
+}
+
+/** Same look as the card picture: the whole image visible on a soft background. */
+function Thumbnail({ src }: { src: string }) {
+  return (
+    <Box
+      w={48}
+      h={48}
+      bg="var(--mantine-color-default-hover)"
+      style={{ borderRadius: 'var(--mantine-radius-sm)', overflow: 'hidden', flexShrink: 0 }}
+    >
+      <Image src={src} alt="" w="100%" h="100%" fit="contain" loading="lazy" />
+    </Box>
+  );
 }
 
 /** Columns with `mobileDisplay: false` are hidden on small screens. */
@@ -24,6 +41,8 @@ export default function RecordTable({
   rowKey,
   onRecordClick,
   renderActions,
+  imageField,
+  imageOf,
 }: RecordTableProps) {
   return (
     <Table.ScrollContainer minWidth={600}>
@@ -56,10 +75,11 @@ export default function RecordTable({
             >
               {columns.map((c) => {
                 const value = record[c.field];
+                const image = isImageUrl(value) ? value : c.field === imageField ? imageOf?.(record) : undefined;
                 return (
                   <Table.Td key={c.field} {...responsive(c)}>
-                    {isImageUrl(value) ? (
-                      <Avatar src={value} radius="sm" size={40} />
+                    {image ? (
+                      <Thumbnail src={image} />
                     ) : (
                       <Text size="sm" lineClamp={2}>
                         {formatValue(value)}

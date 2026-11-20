@@ -4,18 +4,21 @@ import { defineConfig, loadEnv } from 'vite'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiBase = env.VITE_API_BASE_URL ? new URL(env.VITE_API_BASE_URL) : undefined
-  const apiPath = apiBase?.pathname.replace(/\/+$/, '') ?? ''
+  const backend = env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '')
 
   return {
     plugins: [react()],
-    server: apiBase
+    // In dev, API calls are same-origin (same path, no prefix) and forwarded to the backend here,
+    // so the browser sends no CORS preflight (OPTIONS) requests — only GET / POST / PUT / DELETE.
+    server: backend
       ? {
           proxy: {
-            '/__api': {
-              target: apiBase.origin,
+            '/': {
+              target: backend,
               changeOrigin: true,
-              rewrite: (path) => `${apiPath}${path.replace(/^\/__api/, '')}`,
+              // Only API calls (fetch with Accept: application/json) go to the backend;
+              // pages, scripts and assets are still served by Vite.
+              bypass: (req) => (req.headers.accept?.includes('application/json') ? undefined : req.url),
             },
           },
         }

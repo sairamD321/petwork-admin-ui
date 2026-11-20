@@ -36,6 +36,11 @@ export default function BlueprintFormPage(props: BlueprintFormPageProps) {
   const ready = form.load.status === 'ready';
   const { main, side } = layoutSections(visibleFields(form.fields, form.values));
 
+  // The blueprint's `displayName` heads the form; below it the record's name (editing) or the page (creating).
+  const displayName = form.load.status === 'ready' ? form.load.blueprint.displayName?.trim() : undefined;
+  const heading = displayName || title;
+  const subheading = displayName ? (editing ? title : subtitle) : subtitle;
+
   const renderCard = (s: FormSection, narrow?: boolean) => (
     <SectionCard key={s.key} title={s.title}>
       <SectionFields fields={s.fields} form={form} editing={editing} narrow={narrow} />
@@ -57,11 +62,11 @@ export default function BlueprintFormPage(props: BlueprintFormPageProps) {
           </ActionIcon>
           <div>
             <Title order={2} c="indigo">
-              {title}
+              {heading}
             </Title>
-            {subtitle && (
+            {subheading && (
               <Text size="sm" c="dimmed">
-                {subtitle}
+                {subheading}
               </Text>
             )}
           </div>

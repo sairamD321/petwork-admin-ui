@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchEditFormBlueprint, recordIdOf, type EditFormBlueprint } from '../../api/blueprint';
-import { createRecord, updateRecord, type DataRecord } from '../../api/records';
+import { createRecord, fetchRecord, updateRecord, type DataRecord } from '../../api/records';
 import {
   defaultValue,
   dependsOn,
+  existingImages,
+  hasFiles,
   initialValues,
   toFormData,
   toJson,
@@ -37,12 +39,24 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // When editing: the row from the table, overlaid with the full details from the form's `dataApi`.
+  const [details, setDetails] = useState<DataRecord | undefined>(record);
+
   useEffect(() => {
     let cancelled = false;
     fetchEditFormBlueprint(blueprintApi)
-      .then((blueprint) => {
+      .then(async (blueprint) => {
+        let full = record;
+        const recordId = record ? (recordIdOf(blueprint.mappings, record) ?? fallbackRecordId) : undefined;
+        if (record && blueprint.dataApi && recordId) {
+          // GET {dataApi} with the record id; if it fails, prefill from the table row instead.
+          full = await fetchRecord(blueprint.dataApi, recordId)
+            .then((fetched) => ({ ...record, ...fetched }))
+            .catch(() => record);
+        }
         if (cancelled) return;
-        setValues(initialValues(blueprint.editForm ?? [], record));
+        setDetails(full);
+        setValues(initialValues(blueprint.editForm ?? [], full));
         setLoad({ status: 'ready', blueprint });
       })
       .catch((err: unknown) => {
@@ -51,7 +65,7 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
     return () => {
       cancelled = true;
     };
-  }, [blueprintApi, record]);
+  }, [blueprintApi, record, fallbackRecordId]);
 
   const fields = load.status === 'ready' ? (load.blueprint.editForm ?? []) : [];
 
@@ -70,7 +84,7 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
   }
 
   function reset() {
-    setValues(initialValues(fields, record));
+    setValues(initialValues(fields, details));
     setErrors({});
     setSaveError(null);
   }
@@ -82,16 +96,18 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
     if (Object.keys(found).length) return;
 
     const { createApi, dataApi, mappings } = load.blueprint;
-    const recordId = record ? (recordIdOf(mappings, record) ?? fallbackRecordId) : undefined;
+    const recordId = details ? (recordIdOf(mappings, details) ?? fallbackRecordId) : undefined;
     setSaving(true);
     setSaveError(null);
     try {
       if (!record) {
         if (!createApi) throw new Error('This form has no create API in its blueprint.');
-        await createRecord(createApi, toFormData(fields, values));
+        // The backend reads a JSON body; multipart only when a file has to travel with it.
+        await createRecord(createApi, hasFiles(values) ? toFormData(fields, values) : toJson(fields, values));
       } else {
         if (!dataApi || !recordId) throw new Error('This form has no update API for this record.');
-        await updateRecord(dataApi, recordId, toJson(fields, values));
+        // A newly picked file can't travel in JSON, so the whole form goes as multipart then.
+        await updateRecord(dataApi, recordId, hasFiles(values) ? toFormData(fields, values) : toJson(fields, values));
       }
       onSaved();
     } catch (err) {
@@ -101,5 +117,8 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
     }
   }
 
-  return { load, fields, values, errors, setValue, reset, submit, saving, saveError };
+  /** Product-level image URLs from the fetched details, per file-upload field (edit only). */
+  const images = useMemo(() => existingImages(fields, details), [fields, details]);
+
+  return { load, fields, values, errors, setValue, reset, submit, saving, saveError, images };
 }

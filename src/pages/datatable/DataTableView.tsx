@@ -8,7 +8,7 @@ import {
   type SearchField,
 } from '../../api/blueprint';
 import type { DataRecord } from '../../api/records';
-import { formatValue, isImageUrl } from './cellValue';
+import { formatValue, isImageColumn, isImageUrl, variantImageUrlOf } from './cellValue';
 import { activeFilters, isDropdown, type QuickSearch } from './quickSearch';
 import QuickSearchBar from './QuickSearchBar';
 import RecordCard from './RecordCard';
@@ -30,21 +30,6 @@ interface DataTableViewProps {
 }
 
 const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
-
-function hasMainImage(value: unknown): value is { mainImage: string; isDefault?: unknown } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'mainImage' in value &&
-    isImageUrl(value.mainImage)
-  );
-}
-
-function variantImageUrlOf(record: DataRecord): string | undefined {
-  if (!Array.isArray(record.variants)) return undefined;
-  const variants = record.variants.filter(hasMainImage);
-  return variants.find((variant) => variant.isDefault === true)?.mainImage ?? variants[0]?.mainImage;
-}
 
 /** Renders records exactly as the blueprint describes: columns, display mode and search fields. */
 export default function DataTableView({
@@ -68,6 +53,8 @@ export default function DataTableView({
     () => columns.find((c) => records.some((r) => isImageUrl(r[c.field])))?.field,
     [columns, records],
   );
+  // For the table: the picture column (by its values, else by its name) falls back to the variant image.
+  const tableImageField = imageField ?? columns.find(isImageColumn)?.field;
   const titleField = columns.find((c) => c.field !== imageField)?.field;
   const cardColumns = columns.filter(
     (c) => c.field !== imageField && c.field !== titleField && c.mobileDisplay !== false,
@@ -156,6 +143,8 @@ export default function DataTableView({
               rowKey={rowKey}
               onRecordClick={(record) => onRecordClick(record, titleOf(record))}
               renderActions={renderActions}
+              imageField={tableImageField}
+              imageOf={variantImageUrlOf}
             />
           )}
         </div>

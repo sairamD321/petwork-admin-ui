@@ -102,10 +102,12 @@ export interface FormFieldDef {
 
 /** GET {action.blueprintApi} */
 export interface EditFormBlueprint {
+  /** Heading shown at the top of the form. */
+  displayName?: string;
   editForm: FormFieldDef[];
   /** POST target for new records (multipart). */
   createApi?: string;
-  /** PUT target for existing records, contains `{recordId}`. */
+  /** GET (prefill) and PUT (save) target for existing records, contains `{recordId}`. */
   dataApi?: string;
   refreshOnSave?: boolean;
   resetButton?: boolean;
@@ -134,18 +136,19 @@ export function recordIdOf(
 }
 
 /**
- * Action blueprints are referenced as `{service}/blueprint/{version}/{name}`, which the gateway
- * doesn't serve; it serves `/{service}/api/blueprint/{name}`. Try the given path first so this
- * fallback becomes unused once the backend sends the real path.
+ * Action blueprints are referenced as `{service}/blueprint/{version}/{name}` and served under `/api`:
+ * `products/blueprint/{version}/categoriesEditForm` -> `/api/products/blueprint/v1/categoriesEditForm`.
+ * If that 404s, the older gateway route `/{service}/api/blueprint/{name}` is tried.
  */
 const ACTION_BLUEPRINT_PATH = /^\/?([\w-]+)\/blueprint\/\{version\}\/([\w-]+)$/;
 
 async function loadBlueprint(path: string): Promise<unknown> {
+  const match = ACTION_BLUEPRINT_PATH.exec(path);
+  if (!match) return apiRequest<unknown>(resolveApiPath(path));
   try {
-    return await apiRequest<unknown>(resolveApiPath(path));
+    return await apiRequest<unknown>(`/api${resolveApiPath(path)}`);
   } catch (err) {
-    const match = ACTION_BLUEPRINT_PATH.exec(path);
-    if (match && err instanceof ApiError && err.status === 404) {
+    if (err instanceof ApiError && err.status === 404) {
       return apiRequest<unknown>(`/${match[1]}/api/blueprint/${match[2]}`);
     }
     throw err;
@@ -155,8 +158,24 @@ async function loadBlueprint(path: string): Promise<unknown> {
 // Blueprints describe layout, not data, so they're cached for the whole session.
 const blueprints = cacheByKey(loadBlueprint);
 
+/**
+ * The backend isn't consistent about casing (the menu sends `dataTableBluePrintUrl`), so an action's
+ * form link may arrive as `bluePrintApi` etc. Without it, Create/Edit would silently do nothing.
+ */
+const BLUEPRINT_API_KEYS = ['blueprintApi', 'bluePrintApi', 'blueprintUrl', 'bluePrintUrl', 'blueprintAPI', 'bluePrintAPI'];
+
+function normalizeAction(a: BlueprintAction): BlueprintAction {
+  const raw = a as unknown as Record<string, unknown>;
+  const api = BLUEPRINT_API_KEYS.map((k) => raw[k]).find((v): v is string => typeof v === 'string' && v.trim() !== '');
+  return api ? { ...a, blueprintApi: api.trim() } : a;
+}
+
 export function fetchDataTableBlueprint(url: string): Promise<DataTableBlueprint> {
-  return blueprints.get(url) as Promise<DataTableBlueprint>;
+  return (blueprints.get(url) as Promise<DataTableBlueprint>).then((bp) => ({
+    ...bp,
+    actions: bp.actions?.map(normalizeAction),
+    rowLevelactions: bp.rowLevelactions?.map(normalizeAction),
+  }));
 }
 
 export function fetchSearchBlueprint(url: string): Promise<SearchBlueprint> {

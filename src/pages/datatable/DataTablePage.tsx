@@ -70,7 +70,8 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     if (isDeleteAction(a) && recordId) {
       setDeleteError(null);
       setPendingDelete({ action: a, recordId, name: name || recordId });
-    } else if (a.blueprintApi && recordId) {
+    } else if (a.blueprintApi) {
+      // The form finds the record id itself (its own `mappings`, then `recordId` as a fallback).
       openForm({ title: name || actionLabel(a), blueprintApi: a.blueprintApi, record, recordId });
     }
   }

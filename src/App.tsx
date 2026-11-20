@@ -13,7 +13,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconLogout, IconMoon, IconPaw, IconSun } from '@tabler/icons-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { clearBlueprintCache } from './api/blueprint';
-import { clearMenuCache, type MenuItem } from './api/menu';
+import { clearMenuCache, fetchMenu, type MenuItem } from './api/menu';
 import { clearRecordsCache } from './api/records';
 import { clearSession, getSession, onUnauthorized, saveSession } from './api/session';
 import SideNav from './components/SideNav';
@@ -28,6 +28,27 @@ function signOut() {
   clearMenuCache();
   clearBlueprintCache();
   clearRecordsCache();
+}
+
+/** The open menu item is kept in the URL (`#/categories`) so a reload returns to the same page. */
+function readPageId(): string | null {
+  const id = window.location.hash.replace(/^#\/?/, '');
+  return id ? decodeURIComponent(id) : null;
+}
+
+function writePageId(id: string | null) {
+  const url = id ? `#/${encodeURIComponent(id)}` : window.location.pathname + window.location.search;
+  // replaceState: keeps the form's Back-button history entries intact.
+  window.history.replaceState(window.history.state, '', url);
+}
+
+function findItem(items: MenuItem[], id: string): MenuItem | undefined {
+  for (const item of items) {
+    if (item.id === id) return item;
+    const found = findItem(item.children ?? [], id);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 const pageFallback = (
@@ -74,7 +95,34 @@ export default function App() {
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [opened, { toggle }] = useDisclosure();
+  const [activeId, setActiveId] = useState<string | null>(readPageId);
   const [active, setActive] = useState<MenuItem | null>(null);
+
+  // After a reload only the id is known; look the item up in the (cached) menu.
+  useEffect(() => {
+    if (!activeId || active) return;
+    let cancelled = false;
+    fetchMenu()
+      .then((items) => {
+        if (cancelled) return;
+        const item = findItem(items, activeId);
+        if (item) setActive(item);
+        else {
+          setActiveId(null);
+          writePageId(null);
+        }
+      })
+      .catch(() => {}); // the sidebar shows the menu error
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, active]);
+
+  function select(item: MenuItem) {
+    setActive(item);
+    setActiveId(item.id);
+    writePageId(item.id);
+  }
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   return (
@@ -108,7 +156,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
       <AppShell.Navbar p="sm">
         <AppShell.Section grow style={{ overflowY: 'auto' }}>
-          <SideNav activeId={active?.id ?? null} onSelect={setActive} />
+          <SideNav activeId={activeId} onSelect={select} />
         </AppShell.Section>
       </AppShell.Navbar>
 

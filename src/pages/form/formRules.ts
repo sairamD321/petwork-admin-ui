@@ -54,21 +54,107 @@ export function defaultValue(f: FormFieldDef): FieldValue {
   return simpleDefault(f);
 }
 
+const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** A record value as a simple form value: checkboxes as booleans, dropdown objects by their code. */
+function simpleFromRecord(f: FormFieldDef, v: unknown): string | boolean | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (f.fieldType === 'checkBox') return v === true || v === 'true' || v === 1 || v === '1';
+  if (isPlainObject(v)) {
+    const code = v[f.dropdownCode ?? 'code'] ?? v[f.field];
+    return code === null || code === undefined ? undefined : String(code);
+  }
+  if (Array.isArray(v)) return v.join(',');
+  return String(v);
+}
+
+// --- Existing images (edit) ---
+
+/**
+ * Hidden key on a group row holding the image URLs it was loaded with (newline-separated), so they
+ * stay with their row when rows are added or removed. Display only: stripped from every payload.
+ */
+export const ROW_IMAGES = '__images';
+
+const URL_RE = /^https?:\/\/\S+$/i;
+const IMAGE_EXT = /\.(png|jpe?g|webp|gif|svg|avif|bmp)(\?\S*)?$/i;
+const IMAGE_KEY = /image|img|photo|picture|thumbnail|gallery/i;
+
+/**
+ * Every image URL inside a record value (strings, lists, nested objects), without duplicates.
+ * A URL counts when it ends in an image extension, or sits under an image-like key (e.g. `mainImage`).
+ */
+export function imagesIn(value: unknown, imageKey = false, depth = 0): string[] {
+  if (depth > 4 || value === null || value === undefined) return [];
+  if (typeof value === 'string') {
+    const s = value.trim();
+    return URL_RE.test(s) && (imageKey || IMAGE_EXT.test(s)) ? [s] : [];
+  }
+  const found = Array.isArray(value)
+    ? value.flatMap((v) => imagesIn(v, imageKey, depth + 1))
+    : typeof value === 'object'
+      ? Object.entries(value as Record<string, unknown>).flatMap(([k, v]) => imagesIn(v, imageKey || IMAGE_KEY.test(k), depth + 1))
+      : [];
+  return [...new Set(found)];
+}
+
+export const rowImages = (item: GroupItem): string[] =>
+  typeof item[ROW_IMAGES] === 'string' ? (item[ROW_IMAGES] as string).split('\n').filter(Boolean) : [];
+
+/** A group row without the display-only image list, as sent to the backend. */
+function stripRowImages(item: GroupItem): GroupItem {
+  const { [ROW_IMAGES]: _images, ...rest } = item;
+  return rest;
+}
+
+const isGroupList = (v: FieldValue): v is GroupItem[] =>
+  Array.isArray(v) && !v.some((x) => x instanceof File);
+
+/**
+ * The product-level images from fetched details, per file-upload field: a field's own value first;
+ * images found elsewhere at the top level (not inside groups like variants) go to the first file field.
+ */
+export function existingImages(fields: FormFieldDef[], record: DataRecord | undefined): Record<string, string[]> {
+  if (!record) return {};
+  const fileFields = fields.filter((f) => f.fieldType === 'fileUpload');
+  if (!fileFields.length) return {};
+  const groupFields = new Set(fields.filter((f) => f.fieldType === 'repeatableGroup').map((f) => f.field));
+  const out: Record<string, string[]> = {};
+  const claimed = new Set<string>();
+  for (const f of fileFields) {
+    out[f.field] = imagesIn(record[f.field], true);
+    out[f.field].forEach((u) => claimed.add(u));
+  }
+  const leftover = Object.entries(record)
+    .filter(([k]) => !groupFields.has(k) && !fileFields.some((f) => f.field === k))
+    .flatMap(([k, v]) => imagesIn(v, IMAGE_KEY.test(k)))
+    .filter((u) => !claimed.has(u));
+  const first = fileFields[0].field;
+  out[first] = [...new Set([...out[first], ...leftover])];
+  return out;
+}
+
+function groupItemFrom(f: FormFieldDef, source: Record<string, unknown>): GroupItem {
+  const item = newGroupItem(f);
+  for (const c of f.childFields ?? []) {
+    const v = simpleFromRecord(c, source[c.field]);
+    if (v !== undefined) item[c.field] = v;
+  }
+  const images = imagesIn(source);
+  if (images.length) item[ROW_IMAGES] = images.join('\n');
+  return item;
+}
+
 function fromRecord(f: FormFieldDef, record: DataRecord): FieldValue | undefined {
   if (f.fieldType === 'fileUpload') return undefined; // files can't be prefilled
   if (f.fieldType === 'repeatableGroup') {
-    const children = f.childFields ?? [];
-    if (!children.some((c) => record[c.field] != null)) return undefined;
-    const item = newGroupItem(f);
-    for (const c of children) {
-      const v = record[c.field];
-      if (v != null) item[c.field] = typeof v === 'boolean' ? v : String(v);
-    }
-    return [item];
+    // Full details carry the group as a list (e.g. `variants: [...]`); a list row may only have flat fields.
+    const list = record[f.field];
+    if (Array.isArray(list)) return list.filter(isPlainObject).map((row) => groupItemFrom(f, row));
+    if (!(f.childFields ?? []).some((c) => record[c.field] != null)) return undefined;
+    return [groupItemFrom(f, record)];
   }
-  const v = record[f.field];
-  if (v === null || v === undefined) return undefined;
-  return f.fieldType === 'checkBox' ? Boolean(v) : String(v);
+  return simpleFromRecord(f, record[f.field]);
 }
 
 /** One value per field name; when editing, record values matching a field name are prefilled. */
@@ -175,33 +261,42 @@ export function validate(fields: FormFieldDef[], values: FormValues): FormErrors
 // --- Payloads ---
 
 /** Field names that are currently visible (a name can belong to several conditional fields). */
-function visibleNames(fields: FormFieldDef[], values: FormValues) {
-  return [...new Set(visibleFields(fields, values).map((f) => f.field))];
+/** Every field in the blueprint, once each: the whole form goes to the backend, empty values included. */
+const allNames = (fields: FormFieldDef[]) => [...new Set(fields.map((f) => f.field))];
+
+const isFileList = (v: FieldValue): v is File[] => Array.isArray(v) && v.length > 0 && v.every((x) => x instanceof File);
+
+/** Whether any field holds a newly picked file. */
+export function hasFiles(values: FormValues): boolean {
+  return Object.values(values).some((v) => v instanceof File || isFileList(v));
 }
 
-/** Multipart body for `createApi`: files as parts, groups as JSON, empty values skipped. */
+/**
+ * Multipart body with every form field: files as parts, groups as JSON, checkboxes as "true"/"false",
+ * text trimmed (empty text is sent as ""). Only file fields with no file picked are left out.
+ */
 export function toFormData(fields: FormFieldDef[], values: FormValues): FormData {
   const data = new FormData();
-  for (const name of visibleNames(fields, values)) {
+  for (const name of allNames(fields)) {
     const v = values[name];
     if (v instanceof File) data.append(name, v);
-    else if (Array.isArray(v) && v.every((x) => x instanceof File)) (v as File[]).forEach((file) => data.append(name, file));
-    else if (Array.isArray(v)) data.append(name, JSON.stringify(v));
-    else if (typeof v === 'boolean') data.append(name, String(v));
-    else if (typeof v === 'string' && v.trim()) data.append(name, v.trim());
+    else if (isFileList(v)) v.forEach((file) => data.append(name, file));
+    else if (Array.isArray(v)) {
+      if (isGroupList(v)) data.append(name, JSON.stringify(v.map(stripRowImages)));
+    } else if (typeof v === 'boolean') data.append(name, String(v));
+    else if (typeof v === 'string') data.append(name, v.trim());
   }
   return data;
 }
 
-/** JSON body for updates; files can't travel in JSON so they're left out. */
+/** JSON body with every form field (empty text as "", unset values as null). Files need `toFormData`. */
 export function toJson(fields: FormFieldDef[], values: FormValues): Record<string, unknown> {
   const fileFields = new Set(fields.filter((f) => f.fieldType === 'fileUpload').map((f) => f.field));
   const body: Record<string, unknown> = {};
-  for (const name of visibleNames(fields, values)) {
-    const v = values[name];
-    if (fileFields.has(name) || v === null) continue;
-    if (typeof v !== 'string') body[name] = v;
-    else if (v.trim()) body[name] = v.trim();
+  for (const name of allNames(fields)) {
+    if (fileFields.has(name)) continue;
+    const v = values[name] ?? null;
+    body[name] = typeof v === 'string' ? v.trim() : isGroupList(v) ? v.map(stripRowImages) : v;
   }
   return body;
 }

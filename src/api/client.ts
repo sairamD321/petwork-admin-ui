@@ -1,10 +1,11 @@
 import { getSession, notifyUnauthorized } from './session';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
-const BASE_URL =
-  import.meta.env.DEV && API_BASE_URL
-    ? '/__api'
-    : API_BASE_URL.replace(/\/+$/, '');
+/**
+ * In dev, requests are same-origin at the real path (e.g. `/api/products/...`) and the Vite dev server
+ * forwards them to VITE_API_BASE_URL, which avoids CORS preflight (OPTIONS) requests.
+ * In a production build they go straight to VITE_API_BASE_URL.
+ */
+const BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class ApiError extends Error {

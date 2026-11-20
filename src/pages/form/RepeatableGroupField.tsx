@@ -1,8 +1,9 @@
-import { ActionIcon, Button, Group, Paper, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Box, Button, Group, Paper, SimpleGrid, Stack, Text, Tooltip } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import type { FormFieldDef } from '../../api/blueprint';
+import ExistingImages from './ExistingImages';
 import FormField from './FormField';
-import { newGroupItem, ruleOf, type FormErrors, type GroupItem } from './formRules';
+import { newGroupItem, rowImages, ruleOf, type FormErrors, type GroupItem } from './formRules';
 
 interface RepeatableGroupFieldProps {
   group: FormFieldDef;
@@ -66,6 +67,11 @@ export default function RepeatableGroupField({
               </ActionIcon>
             </Tooltip>
           </Group>
+          {rowImages(item).length > 0 && (
+            <Box mb="sm">
+              <ExistingImages urls={rowImages(item)} label="Images" size={72} />
+            </Box>
+          )}
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             {children.map((c) => (
               <FormField
