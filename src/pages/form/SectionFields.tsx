@@ -38,13 +38,17 @@ export default function SectionFields({ fields, form, editing, narrow }: Section
               />
             ) : (
               <Stack gap="sm">
-                {fileOnEdit && <ExistingImages urls={form.images[f.field] ?? []} />}
+                {fileOnEdit && <ExistingImages images={form.images[f.field] ?? []} title="Main product images" />}
                 <FormField
                   field={f}
                   value={form.values[f.field] ?? null}
                   error={form.errors[f.field]}
-                  disabled={locked || fileOnEdit}
-                  note={fileOnEdit ? "Images can't be changed while editing yet." : undefined}
+                  disabled={locked}
+                  note={
+                    fileOnEdit && form.images[f.field]?.length
+                      ? 'Choosing new files uploads them along with your changes.'
+                      : undefined
+                  }
                   onChange={(v) => form.setValue(f.field, v)}
                 />
               </Stack>

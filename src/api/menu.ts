@@ -1,4 +1,4 @@
-import { cacheRequest } from './cache';
+import { shareInFlight } from './cache';
 import { apiRequest } from './client';
 
 /** A main-menu or sub-menu entry used by the sidebar. */
@@ -40,11 +40,10 @@ interface MenuResponseDto {
   errorMessages?: string[] | null;
 }
 
-const menuCache = cacheRequest(loadMenu);
+const loadMenuShared = shareInFlight(() => loadMenu());
 
-/** The main menu and sub-menus the signed-in admin may see. Fetched once per sign-in. */
-export const fetchMenu = menuCache.get;
-export const clearMenuCache = menuCache.clear;
+/** The main menu and sub-menus the signed-in admin may see. Fetched fresh on every call (not cached). */
+export const fetchMenu = (): Promise<MenuItem[]> => loadMenuShared('menu');
 
 async function loadMenu(): Promise<MenuItem[]> {
   const res = await apiRequest<MenuResponseDto>('/users/api/menulinks');

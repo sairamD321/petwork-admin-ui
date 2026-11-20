@@ -12,9 +12,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { IconLogout, IconMoon, IconPaw, IconSun } from '@tabler/icons-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { clearBlueprintCache } from './api/blueprint';
-import { clearMenuCache, fetchMenu, type MenuItem } from './api/menu';
-import { clearRecordsCache } from './api/records';
+import { fetchMenu, type MenuItem } from './api/menu';
 import { clearSession, getSession, onUnauthorized, saveSession } from './api/session';
 import SideNav from './components/SideNav';
 
@@ -22,12 +20,9 @@ import SideNav from './components/SideNav';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const DataTablePage = lazy(() => import('./pages/datatable/DataTablePage'));
 
-/** Cached API data belongs to the signed-in admin; drop it when they leave. */
+/** Nothing from the API is cached, so signing out only ends the session. */
 function signOut() {
   clearSession();
-  clearMenuCache();
-  clearBlueprintCache();
-  clearRecordsCache();
 }
 
 /** The open menu item is kept in the URL (`#/categories`) so a reload returns to the same page. */
@@ -98,7 +93,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [activeId, setActiveId] = useState<string | null>(readPageId);
   const [active, setActive] = useState<MenuItem | null>(null);
 
-  // After a reload only the id is known; look the item up in the (cached) menu.
+  // After a reload only the id is known; look the item up in the menu.
   useEffect(() => {
     if (!activeId || active) return;
     let cancelled = false;

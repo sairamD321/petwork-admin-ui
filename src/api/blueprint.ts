@@ -1,4 +1,4 @@
-import { cacheByKey } from './cache';
+import { shareInFlight } from './cache';
 import { ApiError, apiRequest } from './client';
 
 const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
@@ -107,7 +107,7 @@ export interface EditFormBlueprint {
   editForm: FormFieldDef[];
   /** POST target for new records (multipart). */
   createApi?: string;
-  /** GET (prefill) and PUT (save) target for existing records, contains `{recordId}`. */
+  /** GET (prefill) and PATCH (save) target for existing records, contains `{recordId}`. */
   dataApi?: string;
   refreshOnSave?: boolean;
   resetButton?: boolean;
@@ -155,8 +155,8 @@ async function loadBlueprint(path: string): Promise<unknown> {
   }
 }
 
-// Blueprints describe layout, not data, so they're cached for the whole session.
-const blueprints = cacheByKey(loadBlueprint);
+// Not cached: every open fetches the blueprint fresh from the backend.
+const blueprints = { get: shareInFlight(loadBlueprint) };
 
 /**
  * The backend isn't consistent about casing (the menu sends `dataTableBluePrintUrl`), so an action's
@@ -185,5 +185,3 @@ export function fetchSearchBlueprint(url: string): Promise<SearchBlueprint> {
 export function fetchEditFormBlueprint(url: string): Promise<EditFormBlueprint> {
   return blueprints.get(url) as Promise<EditFormBlueprint>;
 }
-
-export const clearBlueprintCache = blueprints.clear;

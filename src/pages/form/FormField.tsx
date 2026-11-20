@@ -1,8 +1,9 @@
-import { Checkbox, FileInput, Group, Radio, Select, TextInput } from '@mantine/core';
+import { Checkbox, FileInput, Select, TextInput } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import type { FormFieldDef } from '../../api/blueprint';
 import { fetchOptions } from '../../api/records';
 import { ruleOf, type FieldValue } from './formRules';
+import SlidingRadio from './SlidingRadio';
 
 export interface FormFieldProps {
   field: FormFieldDef;
@@ -65,13 +66,13 @@ export default function FormField(props: FormFieldProps) {
   switch (field.fieldType) {
     case 'radioButton':
       return (
-        <Radio.Group {...labelProps(field, error, note)} value={String(value ?? '')} onChange={onChange}>
-          <Group mt={6} gap="lg">
-            {(field.values ?? []).map((v) => (
-              <Radio key={v.radioValue} value={v.radioValue} label={v.radioValue} disabled={disabled} />
-            ))}
-          </Group>
-        </Radio.Group>
+        <SlidingRadio
+          {...labelProps(field, error, note)}
+          options={(field.values ?? []).map((v) => v.radioValue)}
+          value={String(value ?? '')}
+          disabled={disabled}
+          onChange={onChange}
+        />
       );
     case 'dropDown':
     case 'cascadeDropDown':

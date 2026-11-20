@@ -5,10 +5,10 @@ import {
   defaultValue,
   dependsOn,
   existingImages,
-  hasFiles,
   initialValues,
   toFormData,
   toJson,
+  usesMultipart,
   validate,
   type FieldValue,
   type FormErrors,
@@ -99,15 +99,15 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
     const recordId = details ? (recordIdOf(mappings, details) ?? fallbackRecordId) : undefined;
     setSaving(true);
     setSaveError(null);
+    // Forms with file fields (e.g. products with variant images) are multipart endpoints; the rest read JSON.
+    const body = usesMultipart(fields) ? toFormData(fields, values) : toJson(fields, values);
     try {
       if (!record) {
         if (!createApi) throw new Error('This form has no create API in its blueprint.');
-        // The backend reads a JSON body; multipart only when a file has to travel with it.
-        await createRecord(createApi, hasFiles(values) ? toFormData(fields, values) : toJson(fields, values));
+        await createRecord(createApi, body);
       } else {
         if (!dataApi || !recordId) throw new Error('This form has no update API for this record.');
-        // A newly picked file can't travel in JSON, so the whole form goes as multipart then.
-        await updateRecord(dataApi, recordId, hasFiles(values) ? toFormData(fields, values) : toJson(fields, values));
+        await updateRecord(dataApi, recordId, body);
       }
       onSaved();
     } catch (err) {

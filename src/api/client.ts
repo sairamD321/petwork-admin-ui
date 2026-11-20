@@ -19,7 +19,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Attach the signed-in admin's bearer token. Defaults to true. */
   auth?: boolean;
@@ -81,6 +81,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       method,
       headers,
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      // Never read from or write to the browser's HTTP cache: every response comes from the server.
+      cache: 'no-store',
       signal: controller.signal,
     });
   } catch {

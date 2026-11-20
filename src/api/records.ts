@@ -1,5 +1,5 @@
 import { resolveApiPath, resolveRecordPath } from './blueprint';
-import { cacheByKey } from './cache';
+import { shareInFlight } from './cache';
 import { apiRequest } from './client';
 
 /** A row from a blueprint's `dataApi`; its shape is described by the blueprint's columns. */
@@ -45,8 +45,7 @@ async function loadRecordsPage(url: string): Promise<RecordPage> {
   return toRecordPage(await apiRequest<unknown>(url), page);
 }
 
-const recordsCache = cacheByKey(loadRecordsPage);
-const pageCacheKeys = new Map<string, Set<string>>();
+const loadRecordsPageShared = shareInFlight(loadRecordsPage);
 
 function recordsPageUrl(dataApi: string, page: number): string {
   const path = resolveApiPath(dataApi);
@@ -54,35 +53,16 @@ function recordsPageUrl(dataApi: string, page: number): string {
   return `${path}${separator}page=${page}&size=${PAGE_SIZE}`;
 }
 
-/** Fetches and caches one page of records. */
+/** Fetches one page of records, always fresh from the backend (not cached). */
 export function fetchRecords(dataApi: string, page: number): Promise<RecordPage> {
-  const url = recordsPageUrl(dataApi, page);
-  let keys = pageCacheKeys.get(dataApi);
-  if (!keys) {
-    keys = new Set();
-    pageCacheKeys.set(dataApi, keys);
-  }
-  keys.add(url);
-  return recordsCache.get(url);
+  return loadRecordsPageShared(recordsPageUrl(dataApi, page));
 }
 
-/** Invalidates all cached pages for one data endpoint after a mutation. */
-export function invalidateRecords(dataApi: string) {
-  pageCacheKeys.get(dataApi)?.forEach((key) => recordsCache.invalidate(key));
-  pageCacheKeys.delete(dataApi);
-}
-
-// Dropdown options: the blueprint's `api` already carries its own page/size.
-const optionsCache = cacheByKey(async (api: string) => toRecords(await apiRequest<unknown>(resolveApiPath(api))));
-
-/** Options for a blueprint dropdown, cached per `api`. */
-export const fetchOptions = optionsCache.get;
-
-export function clearRecordsCache() {
-  recordsCache.clear();
-  pageCacheKeys.clear();
-  optionsCache.clear();
-}
+/**
+ * Options for a blueprint dropdown, always fresh from the backend (not cached).
+ * The blueprint's `api` already carries its own page/size.
+ */
+export const fetchOptions = shareInFlight(async (api: string) => toRecords(await apiRequest<unknown>(resolveApiPath(api))));
 
 /** Page size for filtered searches. */
 export const SEARCH_PAGE_SIZE = 20;
@@ -125,9 +105,9 @@ export async function fetchRecord(dataApi: string, recordId: string): Promise<Da
   return body;
 }
 
-/** PUT changes to a record through a form blueprint's `dataApi`. */
+/** PATCH changes to a record through a form blueprint's `dataApi` (the backend's update routes are PATCH). */
 export function updateRecord(dataApi: string, recordId: string, body: Record<string, unknown> | FormData) {
-  return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'PUT', body });
+  return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'PATCH', body });
 }
 
 /** DELETE a record through a row action's `dataApi`. */

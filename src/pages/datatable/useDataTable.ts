@@ -5,7 +5,7 @@ import {
   type DataTableBlueprint,
   type SearchField,
 } from '../../api/blueprint';
-import { fetchRecords, invalidateRecords, type DataRecord } from '../../api/records';
+import { fetchRecords, type DataRecord } from '../../api/records';
 
 export type DataTableState =
   | { status: 'loading' }
@@ -74,12 +74,10 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
   }, []);
 
   /** Refetch records after a change, keeping the current list on screen until they arrive. */
-  const dataApi = state.status === 'ready' ? state.blueprint.dataApi : undefined;
   const refresh = useCallback(() => {
-    if (dataApi) invalidateRecords(dataApi);
     setPage(0);
     setAttempt((n) => n + 1);
-  }, [dataApi]);
+  }, []);
 
   const goToPage = useCallback((nextPage: number) => {
     if (nextPage >= 0) setPage(nextPage);

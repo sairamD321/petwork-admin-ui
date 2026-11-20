@@ -1,0 +1,75 @@
+/* The rounded track holding every option. */
+.root {
+  margin-top: 6px;
+  padding: 4px;
+  background: var(--mantine-color-gray-1);
+  border: 1px solid var(--mantine-color-gray-3);
+  transition: border-color 180ms ease;
+}
+
+.root[data-error] {
+  border-color: var(--mantine-color-red-6);
+}
+
+/* The filled pill that glides behind the selected option. */
+.indicator {
+  box-shadow:
+    0 2px 6px rgb(76 110 245 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.15);
+}
+
+.label {
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+  white-space: nowrap;
+  transition:
+    color 220ms ease,
+    transform 160ms ease;
+}
+
+.label:hover {
+  color: var(--mantine-color-indigo-7);
+}
+
+.label[data-active],
+.label[data-active]:hover {
+  color: var(--mantine-color-white);
+  font-weight: 600;
+}
+
+.control:active .label {
+  transform: scale(0.96);
+}
+
+/* No separator lines between options: the pill alone shows the choice. */
+.control::before {
+  display: none;
+}
+
+/* Disabled keeps the indigo pill, just faded. */
+.root[data-disabled] {
+  opacity: 0.6;
+}
+
+.root[data-disabled] .indicator {
+  box-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-mantine-color-scheme='light']) .root {
+    background: var(--mantine-color-dark-6);
+    border-color: var(--mantine-color-dark-4);
+  }
+  :root:not([data-mantine-color-scheme='light']) .label {
+    color: var(--mantine-color-dark-1);
+  }
+}
+
+:root[data-mantine-color-scheme='dark'] .root {
+  background: var(--mantine-color-dark-6);
+  border-color: var(--mantine-color-dark-4);
+}
+
+:root[data-mantine-color-scheme='dark'] .label {
+  color: var(--mantine-color-dark-1);
+}
