@@ -8,7 +8,15 @@ import {
   type SearchField,
 } from '../../api/blueprint';
 import type { DataRecord } from '../../api/records';
-import { formatValue, isImageColumn, isImageUrl, variantImageUrlOf } from './cellValue';
+import {
+  CARD_TITLE_FIELD_NAMES,
+  cardOfferOf,
+  formatValue,
+  isImageColumn,
+  isImageUrl,
+  productCardTitleOf,
+  variantImageUrlOf,
+} from './cellValue';
 import { activeFilters, isDropdown, type QuickSearch } from './quickSearch';
 import QuickSearchBar from './QuickSearchBar';
 import RecordCard from './RecordCard';
@@ -56,12 +64,29 @@ export default function DataTableView({
   // For the table: the picture column (by its values, else by its name) falls back to the variant image.
   const tableImageField = imageField ?? columns.find(isImageColumn)?.field;
   const titleField = columns.find((c) => c.field !== imageField)?.field;
-  const cardColumns = columns.filter(
-    (c) => c.field !== imageField && c.field !== titleField && c.mobileDisplay !== false,
-  );
+  const normalizeCardField = (value: string) => value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const titleFieldNames = new Set(CARD_TITLE_FIELD_NAMES.map(normalizeCardField));
+  const offerFieldNames = new Set([
+    'unitSize', 'size', 'packSize', 'weight', 'sizeName', 'unitType', 'unit', 'measureType', 'measurementUnit',
+    'mrp', 'mrpPrice', 'maximumRetailPrice', 'costPrice',
+    'finalPrice', 'sellingPrice', 'salePrice', 'price',
+    'discount', 'discountPercent', 'discountPercentage',
+  ].map(normalizeCardField));
+  const cardColumns = columns.filter((c) => {
+    const fieldName = normalizeCardField(c.field);
+    const displayName = normalizeCardField(c.displayName);
+    return c.field !== imageField &&
+      c.field !== titleField &&
+      c.mobileDisplay !== false &&
+      !titleFieldNames.has(fieldName) &&
+      !titleFieldNames.has(displayName) &&
+      !offerFieldNames.has(fieldName) &&
+      !offerFieldNames.has(displayName);
+  });
 
   const rowKey = (r: DataRecord, i: number) => recordIdOf(blueprint.mappings, r) ?? String(i);
-  const titleOf = (r: DataRecord) => (titleField ? formatValue(r[titleField]) : '');
+  const titleOf = (r: DataRecord) =>
+    productCardTitleOf(r, titleField ? formatValue(r[titleField]) : '');
 
   const rowActions = blueprint.rowLevelactions ?? [];
   const renderActions = rowActions.length
@@ -128,14 +153,23 @@ export default function DataTableView({
           {mode === 'cards' ? (
             <SimpleGrid cols={GRID_COLS} spacing="lg" verticalSpacing="xl">
               {visible.map((r, i) => (
-                <RecordCard
-                  key={rowKey(r, i)}
-                  title={titleOf(r)}
-                  imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : variantImageUrlOf(r)}
-                  fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
-                  onClick={() => onRecordClick(r, titleOf(r))}
-                  actions={renderActions?.(r, 'buttons')}
-                />
+                (() => {
+                  const offer = cardOfferOf(r);
+                  return (
+                    <RecordCard
+                      key={rowKey(r, i)}
+                      title={titleOf(r)}
+                      imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : variantImageUrlOf(r)}
+                      fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
+                      size={offer.size}
+                      mrp={offer.mrp}
+                      price={offer.price}
+                      discount={offer.discount}
+                      onClick={() => onRecordClick(r, titleOf(r))}
+                      actions={renderActions?.(r, 'buttons')}
+                    />
+                  );
+                })()
               ))}
             </SimpleGrid>
           ) : (

@@ -1,5 +1,6 @@
 /* Each record sits on its own white card, softly separated from its neighbours. */
 .card {
+  min-width: 0;
   padding: 12px;
   background: var(--mantine-color-white);
   border: 1px solid var(--mantine-color-gray-2);
@@ -9,6 +10,27 @@
     transform 200ms ease,
     box-shadow 200ms ease,
     border-color 200ms ease;
+}
+
+.discountBadge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  min-width: 42px;
+  padding: 5px 4px 4px;
+  border-radius: 0 0 4px 0;
+  background: #1683d8;
+  color: white;
+  font-size: 11px;
+  line-height: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.title {
+  min-height: 34px;
+  line-height: 17px;
 }
 
 /* Pops up a little under the cursor (or keyboard focus). */
