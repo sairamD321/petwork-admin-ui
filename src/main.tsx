@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@mantine/core/styles.css';
-import { MantineProvider, type MantineColorSchemeManager } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { theme } from './theme';
 import App from './App';
 
@@ -28,25 +28,10 @@ function clearBrowserCaches() {
 }
 clearBrowserCaches();
 
-/** Light/dark choice lives in memory only: it lasts until the page reloads and is never stored. */
-function memoryColorSchemeManager(): MantineColorSchemeManager {
-  let value: ReturnType<MantineColorSchemeManager['get']> | undefined;
-  return {
-    get: (defaultValue) => value ?? defaultValue,
-    set: (next) => {
-      value = next;
-    },
-    subscribe: () => {},
-    unsubscribe: () => {},
-    clear: () => {
-      value = undefined;
-    },
-  };
-}
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto" colorSchemeManager={memoryColorSchemeManager()}>
+    {/* Always light, whatever the system theme; there is no dark mode. */}
+    <MantineProvider theme={theme} forceColorScheme="light">
       <App />
     </MantineProvider>
   </StrictMode>,

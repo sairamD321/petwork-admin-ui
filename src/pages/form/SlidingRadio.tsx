@@ -1,5 +1,5 @@
 import { Input, SegmentedControl } from '@mantine/core';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import classes from './SlidingRadio.module.css';
 
 interface SlidingRadioProps {
@@ -7,6 +7,8 @@ interface SlidingRadioProps {
   description?: ReactNode;
   error?: ReactNode;
   withAsterisk?: boolean;
+  /** Layout overrides for the wrapper; `wrapper` is applied to the segmented track. */
+  styles?: { root?: CSSProperties; wrapper?: CSSProperties };
   options: string[];
   value: string;
   disabled?: boolean;
@@ -15,7 +17,7 @@ interface SlidingRadioProps {
 
 /** Long option sets get a smaller size so they stay on one line in narrow columns. */
 const sizeFor = (options: string[]) =>
-  options.length >= 5 || options.join('').length > 34 ? 'xs' : 'sm';
+  options.length >= 5 || options.join('').length > 34 ? 'sm' : 'md';
 
 /**
  * A single-choice field as a segmented track: a filled pill glides behind the selected option.
@@ -26,19 +28,29 @@ export default function SlidingRadio({
   description,
   error,
   withAsterisk,
+  styles,
   options,
   value,
   disabled,
   onChange,
 }: SlidingRadioProps) {
   return (
-    <Input.Wrapper label={label} description={description} error={error} withAsterisk={withAsterisk}>
+    <Input.Wrapper
+      label={label}
+      description={description}
+      error={error}
+      withAsterisk={withAsterisk}
+      styles={{ root: styles?.root }}
+    >
       <SegmentedControl
+        style={styles?.wrapper}
         data={options}
         // No choice yet: an unmatched value leaves the pill hidden instead of picking the first option.
         value={value}
         onChange={onChange}
-        disabled={disabled}
+        // Mantine writes `data-disabled="false"` for `false`, which still matches `[data-disabled]`
+        // in CSS and faded every enabled control; pass undefined so the attribute is left off.
+        disabled={disabled || undefined}
         fullWidth
         radius="xl"
         // Same indigo as the card headings; set here so it wins over Mantine's default indicator colour.

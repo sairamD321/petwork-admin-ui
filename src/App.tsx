@@ -7,10 +7,9 @@ import {
   Loader,
   Text,
   Title,
-  useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconLogout, IconMoon, IconPaw, IconSun } from '@tabler/icons-react';
+import { IconLogout, IconPaw } from '@tabler/icons-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from './api/menu';
 import { clearSession, getSession, onUnauthorized, saveSession } from './api/session';
@@ -113,12 +112,25 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     };
   }, [activeId, active]);
 
+  // Bumped on every menu click, so clicking the item you're already on still reopens its list.
+  const [navCount, setNavCount] = useState(0);
+
   function select(item: MenuItem) {
-    setActive(item);
-    setActiveId(item.id);
-    writePageId(item.id);
+    const go = () => {
+      setActive(item);
+      setActiveId(item.id);
+      setNavCount((n) => n + 1);
+      writePageId(item.id);
+    };
+    // A form is open (it added a history entry): step back off it first, so Back doesn't
+    // land on a stale form entry, then show the page.
+    if (window.history.state?.blueprintForm) {
+      window.addEventListener('popstate', go, { once: true });
+      window.history.back();
+    } else {
+      go();
+    }
   }
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   return (
     <AppShell
@@ -134,14 +146,6 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <Title order={4}>PetWork Admin</Title>
           </Group>
           <Group gap="xs">
-            <ActionIcon
-              variant="default"
-              size="lg"
-              onClick={toggleColorScheme}
-              aria-label="Toggle color scheme"
-            >
-              {colorScheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
-            </ActionIcon>
             <ActionIcon variant="default" size="lg" onClick={onLogout} aria-label="Sign out">
               <IconLogout size={18} />
             </ActionIcon>
@@ -158,9 +162,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <AppShell.Main bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8))">
         {active?.dataTableBlueprintUrl ? (
           <Suspense fallback={pageFallback}>
-            {/* key: switching menu items starts the page fresh */}
+            {/* key: any menu click, even on the current item, starts the page fresh */}
             <DataTablePage
-              key={active.id}
+              key={`${active.id}:${navCount}`}
               title={active.label}
               tableBlueprintUrl={active.dataTableBlueprintUrl}
               searchBlueprintUrl={active.searchBlueprintUrl}

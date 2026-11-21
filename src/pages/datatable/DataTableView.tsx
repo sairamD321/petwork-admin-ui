@@ -65,7 +65,9 @@ export default function DataTableView({
 
   const rowActions = blueprint.rowLevelactions ?? [];
   const renderActions = rowActions.length
-    ? (r: DataRecord) => <RowActions actions={rowActions} onAction={(a) => onRowAction(a, r, titleOf(r))} />
+    ? (r: DataRecord, variant?: 'icons' | 'buttons') => (
+        <RowActions actions={rowActions} variant={variant} onAction={(a) => onRowAction(a, r, titleOf(r))} />
+      )
     : undefined;
 
   // Any active filter is sent to the backend: {dataApi}?field=value&page=0&size=20.
@@ -132,7 +134,7 @@ export default function DataTableView({
                   imageUrl={imageField && isImageUrl(r[imageField]) ? r[imageField] : variantImageUrlOf(r)}
                   fields={cardColumns.map((c) => ({ label: c.displayName, value: r[c.field] }))}
                   onClick={() => onRecordClick(r, titleOf(r))}
-                  actions={renderActions?.(r)}
+                  actions={renderActions?.(r, 'buttons')}
                 />
               ))}
             </SimpleGrid>

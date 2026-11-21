@@ -19,6 +19,8 @@ interface DataTablePageProps {
 
 interface OpenForm {
   title: string;
+  /** Shown under the title: the record's name when editing, the page name when creating. */
+  subtitle?: string;
   blueprintApi: string;
   record?: DataRecord;
   recordId?: string;
@@ -72,7 +74,10 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
       setPendingDelete({ action: a, recordId, name: name || recordId });
     } else if (a.blueprintApi) {
       // The form finds the record id itself (its own `mappings`, then `recordId` as a fallback).
-      openForm({ title: name || actionLabel(a), blueprintApi: a.blueprintApi, record, recordId });
+      // Title from the action's displayName (e.g. "Update Product"); the record's name goes underneath,
+      // unless it's empty (formatValue's "—" placeholder).
+      const recordName = name && name !== '—' ? name : undefined;
+      openForm({ title: actionLabel(a), subtitle: recordName, blueprintApi: a.blueprintApi, record, recordId });
     }
   }
 
@@ -95,7 +100,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
       <Suspense fallback={null}>
         <BlueprintFormPage
           title={form.title}
-          subtitle={form.record ? undefined : title}
+          subtitle={form.record ? form.subtitle : title}
           blueprintApi={form.blueprintApi}
           record={form.record}
           fallbackRecordId={form.recordId}

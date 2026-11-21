@@ -2,6 +2,7 @@ import { AspectRatio, Box, Center, Group, Image, Stack, Text } from '@mantine/co
 import { IconPhotoOff } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { formatValue } from './cellValue';
+import classes from './RecordCard.module.css';
 
 export interface CardField {
   label: string;
@@ -20,7 +21,7 @@ interface RecordCardProps {
 
 export default function RecordCard({ title, imageUrl, onClick, fields, actions }: RecordCardProps) {
   return (
-    <Stack gap={4} h="100%">
+    <Stack gap={4} h="100%" className={classes.card}>
       <Stack
         gap={4}
         role="button"
@@ -68,7 +69,7 @@ export default function RecordCard({ title, imageUrl, onClick, fields, actions }
       </Stack>
 
       {actions && (
-        <Group justify="flex-end" mt="auto" pt={4}>
+        <Group mt="auto" pt={8}>
           {actions}
         </Group>
       )}

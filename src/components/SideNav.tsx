@@ -1,5 +1,5 @@
 import { Alert, Button, NavLink, Skeleton, Stack, Text } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconHome, IconShoppingBag, IconTag } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from '../api/menu';
 
@@ -17,25 +17,45 @@ function hasActiveDescendant(item: MenuItem, activeId: string | null): boolean {
   return !!item.children?.some((c) => c.id === activeId || hasActiveDescendant(c, activeId));
 }
 
-function MenuEntry({ item, activeId, onSelect }: { item: MenuItem } & SideNavProps) {
+/** Icons for the main menus, matched on the backend's icon name or the menu label. */
+const MENU_ICONS: { match: RegExp; Icon: typeof IconHome }[] = [
+  { match: /home|dashboard/i, Icon: IconHome },
+  { match: /inventory|catalog/i, Icon: IconTag },
+  { match: /order/i, Icon: IconShoppingBag },
+];
+
+function menuIcon(item: MenuItem) {
+  const found = MENU_ICONS.find(({ match }) => match.test(item.icon ?? '') || match.test(item.label));
+  return found ? <found.Icon size={20} stroke={1.75} color="var(--mantine-color-indigo-6)" /> : undefined;
+}
+
+function MenuEntry({ item, activeId, onSelect, depth = 0 }: { item: MenuItem; depth?: number } & SideNavProps) {
   const children = item.children ?? [];
+  // Only top-level menus get an icon; sub-menu links stay text-only.
+  const icon = depth === 0 ? menuIcon(item) : undefined;
 
   if (children.length > 0) {
     return (
       <NavLink
         label={item.label}
+        leftSection={icon}
         childrenOffset={16}
         defaultOpened={hasActiveDescendant(item, activeId)}
       >
         {children.map((child) => (
-          <MenuEntry key={child.id} item={child} activeId={activeId} onSelect={onSelect} />
+          <MenuEntry key={child.id} item={child} activeId={activeId} onSelect={onSelect} depth={depth + 1} />
         ))}
       </NavLink>
     );
   }
 
   return (
-    <NavLink label={item.label} active={item.id === activeId} onClick={() => onSelect(item)} />
+    <NavLink
+      label={item.label}
+      leftSection={icon}
+      active={item.id === activeId}
+      onClick={() => onSelect(item)}
+    />
   );
 }
 

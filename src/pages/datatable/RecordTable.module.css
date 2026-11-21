@@ -1,0 +1,69 @@
+/* Rounded, bordered frame around the whole table. */
+.frame {
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+  overflow: hidden;
+  background: var(--mantine-color-white);
+}
+
+/* Header: soft grey band with small, spaced-out uppercase labels. */
+.th {
+  background: var(--mantine-color-gray-0);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  color: var(--mantine-color-gray-6);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.th:first-child,
+.td:first-child {
+  padding-left: 20px;
+}
+
+.th:last-child,
+.td:last-child {
+  padding-right: 20px;
+}
+
+/* Rows: roomy, with light dividers and a gentle highlight under the cursor. */
+.tr {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.tr:hover,
+.tr:focus-visible {
+  background: var(--mantine-color-indigo-0);
+}
+
+.tr:focus-visible {
+  outline: 2px solid var(--mantine-color-indigo-4);
+  outline-offset: -2px;
+}
+
+.td {
+  border-bottom: 1px solid var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-9);
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+/* Product pictures: framed, rounded tiles. */
+.thumb {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mantine-color-gray-2);
+  background: var(--mantine-color-gray-0);
+}

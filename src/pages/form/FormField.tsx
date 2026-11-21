@@ -18,8 +18,23 @@ export interface FormFieldProps {
 /** Common label props; the tooltip is shown only when it adds something to the label. */
 function labelProps(f: FormFieldDef, error?: string, note?: string) {
   const hint = f.toolTip && f.toolTip !== f.displayName ? f.toolTip : undefined;
-  return { label: f.displayName, description: note ?? hint, withAsterisk: !!ruleOf(f).mandatory, error };
+  return {
+    label: f.displayName,
+    description: note ?? hint,
+    withAsterisk: !!ruleOf(f).mandatory,
+    error,
+    styles: alignedInputStyles,
+  };
 }
+
+/**
+ * Fill the grid cell and push the input box to the bottom, so inputs in the same row line up
+ * even when one field's description wraps onto more lines than its neighbours'.
+ */
+const alignedInputStyles = {
+  root: { display: 'flex', flexDirection: 'column', height: '100%' },
+  wrapper: { marginTop: 'auto' },
+} as const;
 
 function DropdownField({ field, value, error, disabled, onChange }: FormFieldProps) {
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
