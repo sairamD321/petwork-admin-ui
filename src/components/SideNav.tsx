@@ -1,7 +1,8 @@
-import { Alert, Button, NavLink, Skeleton, Stack, Text } from '@mantine/core';
+import { Alert, Box, Button, NavLink, Skeleton, Stack, Text } from '@mantine/core';
 import { IconAlertCircle, IconHome, IconShoppingBag, IconTag } from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from '../api/menu';
+import classes from './SideNav.module.css';
 
 interface SideNavProps {
   activeId: string | null;
@@ -26,8 +27,20 @@ const MENU_ICONS: { match: RegExp; Icon: typeof IconHome }[] = [
 
 function menuIcon(item: MenuItem) {
   const found = MENU_ICONS.find(({ match }) => match.test(item.icon ?? '') || match.test(item.label));
-  return found ? <found.Icon size={20} stroke={1.75} color="var(--mantine-color-indigo-6)" /> : undefined;
+  return found ? (
+    <Box className={classes.iconTile}>
+      <found.Icon size={18} stroke={1.8} />
+    </Box>
+  ) : undefined;
 }
+
+/** Mantine NavLink parts styled by SideNav.module.css. */
+const linkClasses = {
+  root: classes.root,
+  label: classes.label,
+  chevron: classes.chevron,
+  children: classes.children,
+};
 
 function MenuEntry({ item, activeId, onSelect, depth = 0 }: { item: MenuItem; depth?: number } & SideNavProps) {
   const children = item.children ?? [];
@@ -39,8 +52,10 @@ function MenuEntry({ item, activeId, onSelect, depth = 0 }: { item: MenuItem; de
       <NavLink
         label={item.label}
         leftSection={icon}
-        childrenOffset={16}
+        classNames={linkClasses}
+        childrenOffset={0}
         defaultOpened={hasActiveDescendant(item, activeId)}
+        mod={{ 'has-active': hasActiveDescendant(item, activeId) }}
       >
         {children.map((child) => (
           <MenuEntry key={child.id} item={child} activeId={activeId} onSelect={onSelect} depth={depth + 1} />
@@ -53,6 +68,7 @@ function MenuEntry({ item, activeId, onSelect, depth = 0 }: { item: MenuItem; de
     <NavLink
       label={item.label}
       leftSection={icon}
+      classNames={linkClasses}
       active={item.id === activeId}
       onClick={() => onSelect(item)}
     />
@@ -112,10 +128,10 @@ export default function SideNav({ activeId, onSelect }: SideNavProps) {
   }
 
   return (
-    <>
+    <nav className={classes.nav} aria-label="Main menu">
       {state.items.map((item) => (
         <MenuEntry key={item.id} item={item} activeId={activeId} onSelect={onSelect} />
       ))}
-    </>
+    </nav>
   );
 }

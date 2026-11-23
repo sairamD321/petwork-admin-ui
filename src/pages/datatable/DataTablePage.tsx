@@ -1,11 +1,14 @@
-import { Alert, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Alert, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { recordIdOf, type BlueprintAction } from '../../api/blueprint';
 import { deleteRecord, type DataRecord } from '../../api/records';
-import { actionIcon, actionLabel, isDeleteAction, isEditAction } from './actionDisplay';
+import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction } from './actionDisplay';
+import CartDrawer from './CartDrawer';
+import { variantImagesById } from './cellValue';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
+import { useCart } from './useCart';
 import { useDataTable } from './useDataTable';
 
 // The form is only downloaded the first time someone opens it.
@@ -47,6 +50,18 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
 
   const blueprint = state.status === 'ready' ? state.blueprint : null;
 
+  // The cart is shared by the product cards (Add to Cart) and the cart panel (header "Cart").
+  const cart = useCart(blueprint);
+  const [cartOpen, setCartOpen] = useState(false);
+  const cartHeaderAction = (blueprint?.actions ?? []).find((a) => isCartNamed(a) && !!a.dataApi && !a.blueprintApi);
+  // Quantity changes in the panel go to the add action's createApi, else the cart's own endpoint.
+  const cartUpdateAction =
+    cart.addAction ?? (cartHeaderAction ? { ...cartHeaderAction, createApi: cartHeaderAction.dataApi } : undefined);
+  // Pictures for cart lines whose cart data has none: the matching variant's image from the loaded products.
+  const loadedRecords = state.status === 'ready' ? state.records : undefined;
+  const cartFallbackImages = useMemo(() => variantImagesById(loadedRecords ?? []), [loadedRecords]);
+  const cartUnits = Object.values(cart.quantities).reduce((n, q) => n + (q > 0 ? q : 0), 0);
+
   // The form is a page of its own: opening it adds a history entry, so the browser's
   // Back button (and our Back buttons, via history.back) return to the list.
   function openForm(next: OpenForm) {
@@ -64,6 +79,12 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
   }, [form]);
 
   function onHeaderAction(a: BlueprintAction) {
+    // "Cart": GET its dataApi fresh and show the cart panel.
+    if (a === cartHeaderAction) {
+      cart.reload();
+      setCartOpen(true);
+      return;
+    }
     if (a.blueprintApi) openForm({ title: a.action, blueprintApi: a.blueprintApi });
   }
 
@@ -126,9 +147,17 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
             return (
               <Button
                 key={a.action}
+                color={isCartNamed(a) ? 'green' : undefined}
                 leftSection={Icon ? <Icon size={18} /> : undefined}
                 title={a.action}
                 onClick={() => onHeaderAction(a)}
+                rightSection={
+                  a === cartHeaderAction && cartUnits > 0 ? (
+                    <Badge size="sm" circle={cartUnits < 10} color="white" c="green.8" variant="filled">
+                      {cartUnits}
+                    </Badge>
+                  ) : undefined
+                }
               >
                 {actionLabel(a)}
               </Button>
@@ -178,8 +207,17 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
             if (editAction) onRowAction(editAction, record, name);
           }}
           onRowAction={onRowAction}
+          cart={cart}
         />
       )}
+
+      <CartDrawer
+        opened={cartOpen}
+        onClose={() => setCartOpen(false)}
+        cart={cart}
+        updateAction={cartUpdateAction}
+        fallbackImages={cartFallbackImages}
+      />
 
       {pendingDelete && (
         <ConfirmDeleteModal

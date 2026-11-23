@@ -2,6 +2,8 @@ import {
   IconEye,
   IconPencil,
   IconPlus,
+  IconShoppingCart,
+  IconShoppingCartPlus,
   IconTrash,
   type Icon,
 } from '@tabler/icons-react';
@@ -18,6 +20,9 @@ const FA_ICONS: Record<string, Icon> = {
   'fa-trash': IconTrash,
   'fa-trash-alt': IconTrash,
   'fa-eye': IconEye,
+  'fa-shopping-cart': IconShoppingCart,
+  'fa-cart-shopping': IconShoppingCart,
+  'fa-cart-plus': IconShoppingCartPlus,
 };
 
 const isFaName = (s?: string): s is string => !!s && s.startsWith('fa-');
@@ -35,6 +40,13 @@ export function actionLabel(a: BlueprintAction): string {
 
 /** Row actions that call `dataApi` with action `delete` remove the record (after confirming). */
 export const isDeleteAction = (a: BlueprintAction) => a.action.toLowerCase() === 'delete' && !!a.dataApi;
+
+/** Any cart-related action (the header "Cart", a row's "Add to Cart"); these are shown in green. */
+export const isCartNamed = (a: BlueprintAction) =>
+  /cart/i.test(`${a.action} ${a.displayName} ${a.iconName ?? ''} ${a.iconToolTip ?? ''}`);
+
+/** "Add to Cart" style row actions: they POST to `createApi` and show a quantity stepper. */
+export const isCartAction = (a: BlueprintAction) => !!a.createApi && isCartNamed(a);
 
 /** Edit actions may use a different backend action name but still expose an edit icon or label. */
 export const isEditAction = (a: BlueprintAction) =>
