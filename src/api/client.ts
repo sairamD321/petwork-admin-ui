@@ -3,9 +3,11 @@ import { getSession, notifyUnauthorized } from './session';
 /**
  * In dev, requests are same-origin at the real path (e.g. `/api/products/...`) and the Vite dev server
  * forwards them to VITE_API_BASE_URL, which avoids CORS preflight (OPTIONS) requests.
- * In a production build they go straight to VITE_API_BASE_URL.
+ * `npm run start` builds with VITE_API_PROXY set, so the minified build is proxied the same way.
+ * A normal production build (`npm run build`) calls VITE_API_BASE_URL directly.
  */
-const BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
+const USE_PROXY = import.meta.env.DEV || import.meta.env.VITE_API_PROXY === 'true';
+const BASE_URL = USE_PROXY ? '' : (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class ApiError extends Error {
