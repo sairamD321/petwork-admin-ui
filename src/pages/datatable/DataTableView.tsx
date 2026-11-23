@@ -1,5 +1,7 @@
-import { Button, Center, Group, Loader, Paper, SegmentedControl, Text } from '@mantine/core';
-import { useMemo, useState } from 'react';
+
+import { Button, Center, Group, Loader, Paper, SegmentedControl, SimpleGrid, Text } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+
 import {
   recordIdOf,
   type BlueprintAction,
@@ -43,6 +45,21 @@ interface DataTableViewProps {
 }
 
 
+function tableStorageKey(dataApi: string): string {
+  return encodeURIComponent(dataApi);
+}
+
+function restoreSearch(key: string): QuickSearch {
+  try {
+    const stored = sessionStorage.getItem(key);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return parsed && typeof parsed === 'object' ? parsed as QuickSearch : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Renders records exactly as the blueprint describes: columns, display mode and search fields. */
 export default function DataTableView({
   blueprint,
@@ -57,7 +74,16 @@ export default function DataTableView({
   cart,
 }: DataTableViewProps) {
   const [mode, setMode] = useState<DisplayMode>(blueprint.defaultDisplayMode ?? 'table');
-  const [search, setSearch] = useState<QuickSearch>({});
+  const searchStorageKey = `petwork-admin:datatable-search:${tableStorageKey(blueprint.dataApi)}`;
+  const [search, setSearch] = useState<QuickSearch>(() => restoreSearch(searchStorageKey));
+
+  useEffect(() => {
+    if (Object.keys(search).length > 0) {
+      sessionStorage.setItem(searchStorageKey, JSON.stringify(search));
+    } else {
+      sessionStorage.removeItem(searchStorageKey);
+    }
+  }, [search, searchStorageKey]);
 
   const columns = useMemo(() => blueprint.dataGrid.filter((c) => c.display !== false), [blueprint]);
 
