@@ -1,5 +1,6 @@
 import { CloseButton, Group, Select, TextInput, type MantineTransition } from '@mantine/core';
-import { IconSearch } from '@tabler/icons-react';
+import { IconAdjustmentsHorizontal, IconChevronDown, IconSearch } from '@tabler/icons-react';
+import { useState } from 'react';
 import type { SearchField } from '../../api/blueprint';
 import { isActive, isDropdown, minLength, type QuickSearch } from './quickSearch';
 import classes from './QuickSearchBar.module.css';
@@ -28,9 +29,14 @@ const DROPDOWN_PROPS = {
   offset: 6,
   transitionProps: { transition: SLIDE_DOWN, duration: 240, timingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' },
 };
-/** Indigo borders, separator lines and bold black options; see QuickSearchBar.module.css. */
-const DROPDOWN_CLASSES = {
+/** Shared look for every search/filter input; see QuickSearchBar.module.css. */
+const INPUT_CLASSES = {
+  root: classes.root,
   input: classes.input,
+  section: classes.section,
+};
+const DROPDOWN_CLASSES = {
+  ...INPUT_CLASSES,
   dropdown: classes.dropdown,
   option: classes.option,
   empty: classes.empty,
@@ -64,8 +70,16 @@ interface FilterProps {
 
 function DropdownFilter({ field, value, onChange, hint }: FilterProps & { hint?: string }) {
   const { options, failed } = useSearchOptions(field);
+  const [open, setOpen] = useState(false);
   return (
     <Select
+      className={value ? classes.filled : undefined}
+      leftSection={<IconAdjustmentsHorizontal size={16} />}
+      // Our arrow replaces Mantine's ⇅ (it sits next to the × clear button when there is a value).
+      rightSection={<IconChevronDown size={16} className={classes.chevron} data-open={open || undefined} />}
+      onDropdownOpen={() => setOpen(true)}
+      onDropdownClose={() => setOpen(false)}
+      checkIconPosition="right"
       aria-label={field.displayName}
       placeholder={field.placeholder || field.displayName}
       title={field.toolTip || undefined}
@@ -103,6 +117,8 @@ function TextFilter({ field, value, onChange, hint: resultHint }: FilterProps & 
       disabled={field.editable === false}
       description={hint}
       inputWrapperOrder={HINT_BELOW}
+      classNames={INPUT_CLASSES}
+      className={value ? classes.filled : undefined}
       leftSection={<IconSearch size={16} />}
       rightSection={value ? <CloseButton size="sm" aria-label={`Clear ${field.displayName}`} onClick={() => onChange('')} /> : null}
       style={GROW}
