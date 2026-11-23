@@ -1,7 +1,24 @@
+/*
+ * Up to 6 cards per row; a row drops a card only when cards would get narrower than --card-min
+ * (zoomed in, small windows). The inside of a card keeps the same fixed layout at every width.
+ */
+.grid {
+  --card-gap: 16px;
+  --card-min: 168px;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(var(--card-min), calc((100% - 5 * var(--card-gap)) / 6)), 1fr)
+  );
+  gap: 22px var(--card-gap);
+}
+
 /* Each record sits on its own white card, softly separated from its neighbours. */
 .card {
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
-  padding: 12px;
+  padding: 10px;
   background: var(--mantine-color-white);
   border: 1px solid var(--mantine-color-gray-2);
   border-radius: var(--mantine-radius-lg);
@@ -10,6 +27,17 @@
     transform 200ms ease,
     box-shadow 200ms ease,
     border-color 200ms ease;
+}
+
+/* Always a square picture. */
+.picture {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-gray-0);
 }
 
 .discountBadge {
@@ -28,9 +56,43 @@
   text-align: center;
 }
 
+/* Always exactly three lines tall, whether the name is short or long, so every card lines up. */
 .title {
-  min-height: 34px;
+  height: 51px;
   line-height: 17px;
+  overflow: hidden;
+}
+
+/* Size on the left (up to two lines), prices on the right (never wrap or spill out). */
+.offer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  height: 34px;
+  margin-top: 4px;
+}
+
+.size {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.prices {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
 }
 
 /* Pops up a little under the cursor (or keyboard focus). */

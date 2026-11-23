@@ -1,4 +1,4 @@
-import { AspectRatio, Box, Center, Group, Image, Stack, Text } from '@mantine/core';
+import { Box, Center, Group, Image, Stack, Text } from '@mantine/core';
 import { IconPhotoOff } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { formatValue } from './cellValue';
@@ -54,27 +54,22 @@ export default function RecordCard({
         }}
         style={{ cursor: 'pointer' }}
       >
-        <AspectRatio ratio={1}>
-          <Box
-            bg="var(--mantine-color-default-hover)"
-            style={{ position: 'relative', borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden' }}
-          >
-            {discount !== undefined && discount > 0 && (
-              <Box className={classes.discountBadge}>
-                {Math.round(discount)}%<br />OFF
-              </Box>
-            )}
-            {imageUrl ? (
-              <Image src={imageUrl} alt={title} h="100%" w="100%" fit="contain" loading="lazy" />
-            ) : (
-              <Center h="100%">
-                <IconPhotoOff size={32} color="var(--mantine-color-dimmed)" />
-              </Center>
-            )}
-          </Box>
-        </AspectRatio>
+        <Box className={classes.picture}>
+          {discount !== undefined && discount > 0 && (
+            <Box className={classes.discountBadge}>
+              {Math.round(discount)}%<br />OFF
+            </Box>
+          )}
+          {imageUrl ? (
+            <Image src={imageUrl} alt={title} h="100%" w="100%" fit="contain" loading="lazy" />
+          ) : (
+            <Center h="100%">
+              <IconPhotoOff size={32} color="var(--mantine-color-dimmed)" />
+            </Center>
+          )}
+        </Box>
 
-        <Text size="14px" fw={600} lineClamp={2} title={title} mt={6} className={classes.title}>
+        <Text size="14px" fw={600} lineClamp={3} title={title} mt={6} className={classes.title}>
           {title}
         </Text>
 
@@ -90,25 +85,25 @@ export default function RecordCard({
         ))}
 
         {(size || mrp !== undefined || price !== undefined) && (
-          <Group justify="space-between" align="flex-end" wrap="nowrap" mt={4}>
-            <Text size="12px" fw={600}>
+          <div className={classes.offer}>
+            <span className={classes.size} title={size}>
               {size ?? ''}
-            </Text>
+            </span>
             {(mrp !== undefined || price !== undefined) && (
-              <Stack gap={0} align="flex-end">
+              <div className={classes.prices}>
                 {mrp !== undefined && mrp !== price && (
-                  <Text size="10px" c="dimmed" td="line-through">
+                  <Text size="10px" c="dimmed" td="line-through" lh="14px">
                     {currency(mrp)}
                   </Text>
                 )}
                 {price !== undefined && (
-                  <Text size="14px" fw={700}>
+                  <Text size="14px" fw={700} lh="18px">
                     {currency(price)}
                   </Text>
                 )}
-              </Stack>
+              </div>
             )}
-          </Group>
+          </div>
         )}
       </Stack>
 

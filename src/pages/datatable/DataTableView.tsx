@@ -1,5 +1,7 @@
+
 import { Button, Center, Group, Loader, Paper, SegmentedControl, SimpleGrid, Text } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
+
 import {
   recordIdOf,
   type BlueprintAction,
@@ -21,6 +23,7 @@ import {
 import { activeFilters, isDropdown, type QuickSearch } from './quickSearch';
 import QuickSearchBar from './QuickSearchBar';
 import RecordCard from './RecordCard';
+import cardClasses from './RecordCard.module.css';
 import RecordTable from './RecordTable';
 import RowActions from './RowActions';
 import type { CartController } from './useCart';
@@ -41,7 +44,6 @@ interface DataTableViewProps {
   cart: CartController;
 }
 
-const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
 
 function tableStorageKey(dataApi: string): string {
   return encodeURIComponent(dataApi);
@@ -196,7 +198,7 @@ export default function DataTableView({
         // Previous results stay visible, dimmed, while a new search or page loads.
         <div style={{ opacity: loading || pageLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
           {mode === 'cards' ? (
-            <SimpleGrid cols={GRID_COLS} spacing="lg" verticalSpacing="xl">
+            <div className={cardClasses.grid}>
               {visible.map((r, i) => (
                 (() => {
                   const offer = cardOfferOf(r);
@@ -216,7 +218,7 @@ export default function DataTableView({
                   );
                 })()
               ))}
-            </SimpleGrid>
+            </div>
           ) : (
             <RecordTable
               columns={columns}
