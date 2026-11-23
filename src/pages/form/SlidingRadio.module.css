@@ -1,3 +1,9 @@
+/* Measured box around the track (its width comes from the column, not the options). */
+.box {
+  width: 100%;
+  min-width: 0;
+}
+
 /* The rounded track holding every option. */
 .root {
   margin-top: 6px;
@@ -11,13 +17,23 @@
   border-color: var(--mantine-color-red-6);
 }
 
+/* Each option is as wide as its text (plus a fair share of spare room), never an equal slice that cuts long names. */
+.root .control {
+  flex: 1 1 auto;
+}
+
 /* The solid indigo pill that glides behind the selected option. */
 .root .indicator {
   background-color: var(--mantine-color-indigo-5);
   box-shadow: 0 2px 6px rgb(76 110 245 / 0.3);
 }
 
+/* Text size is worked out in SlidingRadio.tsx so every option fits in full. */
 .root .label {
+  padding-inline: 10px;
+  font-size: var(--sr-font, 16px);
+  overflow: visible;
+  text-overflow: clip;
   font-weight: 500;
   color: var(--mantine-color-gray-9);
   white-space: nowrap;
@@ -52,4 +68,62 @@
 
 .root[data-disabled='true'] .indicator {
   box-shadow: none;
+}
+
+/* ---------- Very narrow columns: the same look, wrapped onto several lines ---------- */
+.wrapTrack {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 5px;
+  background: var(--mantine-color-gray-1);
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: 20px;
+  transition: border-color 180ms ease;
+}
+
+.wrapTrack[data-error] {
+  border-color: var(--mantine-color-red-6);
+}
+
+.wrapTrack[data-disabled='true'] {
+  opacity: 0.6;
+}
+
+.wrapOption {
+  flex: 1 1 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--mantine-color-gray-9);
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    box-shadow 220ms ease,
+    transform 160ms ease;
+}
+
+.wrapOption:hover {
+  color: var(--mantine-color-indigo-7);
+}
+
+.wrapOption:active {
+  transform: scale(0.96);
+}
+
+.wrapOption[data-active],
+.wrapOption[data-active]:hover {
+  background: var(--mantine-color-indigo-5);
+  color: var(--mantine-color-white);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgb(76 110 245 / 0.3);
+}
+
+.wrapOption:focus-visible {
+  outline: 2px solid var(--mantine-color-indigo-4);
+  outline-offset: 1px;
 }

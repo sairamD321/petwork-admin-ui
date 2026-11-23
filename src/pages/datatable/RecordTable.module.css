@@ -1,19 +1,22 @@
-/* Rounded, bordered frame around the whole table. */
+/* Rounded, bordered frame around the whole table, with a soft lift off the page. */
 .frame {
   border: 1px solid var(--mantine-color-gray-2);
   border-radius: var(--mantine-radius-lg);
   overflow: hidden;
   background: var(--mantine-color-white);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.04),
+    0 4px 14px -6px rgb(16 24 40 / 0.08);
 }
 
-/* Header: soft grey band with small, spaced-out uppercase labels. */
+/* Header: a faint indigo-tinted band with small, spaced-out uppercase labels. */
 .th {
-  background: var(--mantine-color-gray-0);
-  border-bottom: 1px solid var(--mantine-color-gray-2);
+  background: linear-gradient(180deg, var(--mantine-color-gray-0), #f4f6ff);
+  border-bottom: 1px solid var(--mantine-color-indigo-1);
   color: var(--mantine-color-gray-6);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
   padding-top: 14px;
@@ -22,7 +25,7 @@
 
 .th:first-child,
 .td:first-child {
-  padding-left: 20px;
+  padding-left: 22px;
 }
 
 .th:last-child,
@@ -30,10 +33,28 @@
   padding-right: 20px;
 }
 
-/* Rows: roomy, with light dividers and a gentle highlight under the cursor. */
+/* ---------- Rows ---------- */
 .tr {
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition: background-color 220ms ease;
+  animation: rowIn 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--row-i, 0) * 28ms);
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Every other row is a shade lighter, so long lists are easy to follow across. */
+.tr:nth-child(even) {
+  background: #fcfcfe;
 }
 
 .tr:hover,
@@ -48,13 +69,82 @@
 
 .td {
   border-bottom: 1px solid var(--mantine-color-gray-1);
-  color: var(--mantine-color-gray-9);
+  color: var(--mantine-color-gray-8);
   padding-top: 14px;
   padding-bottom: 14px;
+  transition:
+    box-shadow 220ms ease,
+    color 220ms ease;
+}
+
+/* Indigo accent bar slides in on the left edge of the hovered row. */
+.tr .td:first-child {
+  box-shadow: inset 0 0 0 0 var(--mantine-color-indigo-5);
+}
+
+.tr:hover .td:first-child,
+.tr:focus-visible .td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--mantine-color-indigo-5);
 }
 
 .tr:last-child .td {
   border-bottom: none;
+}
+
+/* ---------- Cell styles ---------- */
+
+/* The row's name column: a little bolder, turns indigo under the cursor. */
+.primary {
+  color: var(--mantine-color-gray-9);
+  transition: color 220ms ease;
+}
+
+.tr:hover .primary {
+  color: var(--mantine-color-indigo-7);
+}
+
+/* Codes (category code, SKU…): small monospace chips. */
+.code {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: var(--mantine-radius-sm);
+  border: 1px solid var(--mantine-color-gray-2);
+  background: var(--mantine-color-gray-0);
+  color: var(--mantine-color-gray-7);
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 12.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease;
+}
+
+.tr:hover .code {
+  background: var(--mantine-color-white);
+  border-color: var(--mantine-color-indigo-2);
+  color: var(--mantine-color-indigo-8);
+}
+
+/* Types / statuses (Dog, Cat…): soft coloured pills. */
+.tag {
+  font-weight: 600;
+}
+
+/* Edit / delete: calm until the row is hovered, then fully coloured. */
+.actions {
+  display: inline-flex;
+  opacity: 0.6;
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.tr:hover .actions,
+.tr:focus-within .actions {
+  opacity: 1;
+  transform: translateX(-2px);
 }
 
 /* Product pictures: framed, rounded tiles. */
@@ -66,4 +156,15 @@
   border-radius: var(--mantine-radius-md);
   border: 1px solid var(--mantine-color-gray-2);
   background: var(--mantine-color-gray-0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr {
+    animation: none;
+  }
+
+  .actions,
+  .tr:hover .actions {
+    transform: none;
+  }
 }
