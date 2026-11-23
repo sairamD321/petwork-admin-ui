@@ -1,25 +1,48 @@
 import { ActionIcon, Button, Group, Tooltip } from '@mantine/core';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
 import type { BlueprintAction } from '../../api/blueprint';
-import { actionIcon, actionLabel, isDeleteAction, isEditAction } from './actionDisplay';
+import { actionIcon, actionLabel, isCartAction, isDeleteAction, isEditAction } from './actionDisplay';
+import CartStepper from './CartStepper';
+
+/** The record's cart line, for "Add to Cart" actions. */
+export interface CartState {
+  variantId: string | undefined;
+  quantity: number;
+  onQuantityChange: (quantity: number) => void;
+}
 
 interface RowActionsProps {
   actions: BlueprintAction[];
   onAction: (action: BlueprintAction) => void;
   /** `icons`: compact icon buttons (table rows). `buttons`: labelled boxes filling the width (cards). */
   variant?: 'icons' | 'buttons';
+  cart?: CartState;
 }
 
 /** A record's blueprint row-level actions. */
-export default function RowActions({ actions, onAction, variant = 'icons' }: RowActionsProps) {
+export default function RowActions({ actions, onAction, variant = 'icons', cart }: RowActionsProps) {
   const run = (a: BlueprintAction) => (event: React.MouseEvent) => {
     event.stopPropagation();
     onAction(a);
   };
 
+  // "Add to Cart" actions become a quantity stepper; the others stay buttons.
+  const cartActions = cart ? actions.filter(isCartAction) : [];
+  const steppers = cartActions.map((a) => (
+    <CartStepper
+      key={a.action}
+      action={a}
+      variantId={cart!.variantId}
+      quantity={cart!.quantity}
+      onQuantityChange={cart!.onQuantityChange}
+    />
+  ));
+  if (cartActions.length) actions = actions.filter((a) => !cartActions.includes(a));
+
   if (variant === 'buttons') {
     return (
       <Group gap={6} wrap="nowrap" justify="flex-end" w="100%">
+        {steppers}
         {actions.map((a) => {
           const Icon = isDeleteAction(a)
             ? IconTrash
@@ -52,6 +75,7 @@ export default function RowActions({ actions, onAction, variant = 'icons' }: Row
 
   return (
     <Group gap={4} wrap="nowrap" justify="flex-end">
+      {steppers}
       {actions.map((a) => {
         const Icon = actionIcon(a);
         const label = actionLabel(a);

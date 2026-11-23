@@ -22,6 +22,8 @@ export interface BlueprintAction {
   blueprintApi?: string;
   /** Endpoint this action calls directly, may contain `{recordId}`. */
   dataApi?: string;
+  /** Endpoint this action POSTs to, e.g. the cart for "Add to Cart". */
+  createApi?: string;
 }
 
 export type DisplayMode = 'table' | 'cards';

@@ -160,6 +160,37 @@ export function cardOfferOf(record: Record<string, unknown>): {
   };
 }
 
+/**
+ * The variant id a cart line is for: the product's default variant (else its first one), or the record
+ * itself when it has no `variants` (a row that already is a variant).
+ */
+export function cartVariantIdOf(record: Record<string, unknown>): string | undefined {
+  const variants = Array.isArray(record.variants)
+    ? record.variants.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    : [];
+  const source = variants.find((v) => v.isDefault === true) ?? variants[0] ?? record;
+  const id = cardNestedValue(source, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
+  return id === undefined || typeof id === 'object' ? undefined : String(id);
+}
+
+/** Variant id -> its main image, from the products on screen (the cart panel's fallback picture). */
+export function variantImagesById(records: Record<string, unknown>[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const record of records) {
+    const variants = Array.isArray(record.variants) ? record.variants : [record];
+    const fallback = variantImageUrlOf(record);
+    for (const v of variants) {
+      if (!v || typeof v !== 'object') continue;
+      const variant = v as Record<string, unknown>;
+      const id = cardNestedValue(variant, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
+      if (id === undefined || typeof id === 'object') continue;
+      const image = typeof variant.mainImage === 'string' && variant.mainImage ? variant.mainImage : fallback;
+      if (image) out[String(id)] = image;
+    }
+  }
+  return out;
+}
+
 /** A column meant to hold a picture, judged by its field or heading (e.g. "Image"). */
 export const isImageColumn = (c: { field: string; displayName: string }) =>
   /image|photo|picture|thumbnail/i.test(`${c.field} ${c.displayName}`);

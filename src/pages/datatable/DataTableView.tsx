@@ -10,6 +10,7 @@ import {
 import type { DataRecord } from '../../api/records';
 import {
   CARD_TITLE_FIELD_NAMES,
+  cartVariantIdOf,
   cardOfferOf,
   formatValue,
   isImageColumn,
@@ -22,6 +23,7 @@ import QuickSearchBar from './QuickSearchBar';
 import RecordCard from './RecordCard';
 import RecordTable from './RecordTable';
 import RowActions from './RowActions';
+import type { CartController } from './useCart';
 import { useSearchResults } from './useSearchResults';
 
 interface DataTableViewProps {
@@ -35,6 +37,8 @@ interface DataTableViewProps {
   onRecordClick: (record: DataRecord, name: string) => void;
   /** A row action was clicked; `name` is the record's display title. */
   onRowAction: (action: BlueprintAction, record: DataRecord, name: string) => void;
+  /** The page's cart, shared with the cart panel. */
+  cart: CartController;
 }
 
 const GRID_COLS = { base: 2, sm: 3, md: 4, lg: 6 };
@@ -65,6 +69,7 @@ export default function DataTableView({
   onPageChange,
   onRecordClick,
   onRowAction,
+  cart,
 }: DataTableViewProps) {
   const [mode, setMode] = useState<DisplayMode>(blueprint.defaultDisplayMode ?? 'table');
   const searchStorageKey = `petwork-admin:datatable-search:${tableStorageKey(blueprint.dataApi)}`;
@@ -112,10 +117,26 @@ export default function DataTableView({
   const titleOf = (r: DataRecord) =>
     productCardTitleOf(r, titleField ? formatValue(r[titleField]) : '');
 
+  const cartOf = (r: DataRecord) => {
+    const variantId = cartVariantIdOf(r);
+    return {
+      variantId,
+      quantity: variantId ? (cart.quantities[variantId] ?? 0) : 0,
+      onQuantityChange: (quantity: number) => {
+        if (variantId) cart.setQuantity(variantId, quantity);
+      },
+    };
+  };
+
   const rowActions = blueprint.rowLevelactions ?? [];
   const renderActions = rowActions.length
     ? (r: DataRecord, variant?: 'icons' | 'buttons') => (
-        <RowActions actions={rowActions} variant={variant} onAction={(a) => onRowAction(a, r, titleOf(r))} />
+        <RowActions
+          actions={rowActions}
+          variant={variant}
+          cart={cartOf(r)}
+          onAction={(a) => onRowAction(a, r, titleOf(r))}
+        />
       )
     : undefined;
 

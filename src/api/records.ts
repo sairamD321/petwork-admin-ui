@@ -110,6 +110,159 @@ export function updateRecord(dataApi: string, recordId: string, body: Record<str
   return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'PATCH', body });
 }
 
+/**
+ * POST a variant's cart quantity to a row action's `createApi` (e.g. `/products/platform/{version}/api/cart`).
+ * Sent on "Add to Cart" and on every +/- after it, always with the new total quantity.
+ */
+export function setCartQuantity(createApi: string, variantId: string, quantity: number) {
+  return apiRequest<unknown>(resolveApiPath(createApi), { method: 'POST', body: { variantId, quantity } });
+}
+
+const VARIANT_ID_KEYS = ['variantId', 'varientId', 'variant_id'];
+const QUANTITY_KEYS = ['quantity', 'qty', 'cartQuantity', 'count'];
+
+/** One line of the saved cart, with whatever display details the backend sends. */
+export interface CartItem {
+  variantId: string;
+  quantity: number;
+  name?: string;
+  size?: string;
+  /** Price of one unit. */
+  price?: number;
+  mrp?: number;
+  imageUrl?: string;
+}
+
+/** The saved cart: its lines, plus any bill amounts the backend works out itself. */
+export interface Cart {
+  items: CartItem[];
+  /** e.g. { deliveryCharge: 25, handlingCharge: 2 } when present in the response. */
+  charges: { label: string; amount: number }[];
+  grandTotal?: number;
+}
+
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
+
+const pick = (o: Obj | undefined, keys: string[]) => {
+  if (!o) return undefined;
+  const key = keys.find((k) => o[k] !== undefined && o[k] !== null && o[k] !== '');
+  return key ? o[key] : undefined;
+};
+const text = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : undefined);
+const num = (v: unknown) => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.replace(/[^0-9.-]/g, '')) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const IMAGE_KEY = /image|img|photo|picture|thumb/i;
+const looksLikeUrl = (v: unknown): v is string => typeof v === 'string' && /^(https?:\/\/|\/|data:image\/)/i.test(v.trim());
+
+/** The first URL-ish value under an image-like key (`mainImage`, `images[0]`, `variant.imageUrl`, `{ url }`...). */
+function findImage(node: unknown, underImageKey = false, depth = 0): string | undefined {
+  if (depth > 4 || node === null || node === undefined) return undefined;
+  if (underImageKey && looksLikeUrl(node)) return node.trim();
+  if (Array.isArray(node)) {
+    for (const v of node) {
+      const found = findImage(v, underImageKey, depth + 1);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (typeof node !== 'object') return undefined;
+  const o = node as Obj;
+  // Image-named keys first (main image before others), then a `{ url }` inside an image list.
+  const keys = Object.keys(o).sort((a, b) => Number(/main/i.test(b)) - Number(/main/i.test(a)));
+  for (const k of keys) {
+    if (!IMAGE_KEY.test(k)) continue;
+    const found = findImage(o[k], true, depth + 1);
+    if (found) return found;
+  }
+  if (underImageKey) {
+    const url = pick(o, ['url', 'src', 'href', 'link']);
+    if (looksLikeUrl(url)) return url.trim();
+  }
+  for (const k of ['variant', 'product']) {
+    const found = findImage(o[k], false, depth + 1);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** A cart line from one response object, looking in it and its nested `variant` / `product`. */
+function toCartItem(o: Obj): CartItem | undefined {
+  const variant = isObj(o.variant) ? o.variant : undefined;
+  const product = isObj(o.product) ? o.product : undefined;
+  const id = pick(o, VARIANT_ID_KEYS) ?? pick(variant, ['id', '_id', ...VARIANT_ID_KEYS]);
+  const quantity = num(pick(o, QUANTITY_KEYS));
+  if (text(id) === undefined || quantity === undefined || quantity <= 0) return undefined;
+
+  const from = (keys: string[]) => pick(o, keys) ?? pick(variant, keys) ?? pick(product, keys);
+  const unitSize = text(from(['unitSize', 'size', 'packSize', 'weight']));
+  const unitType = text(from(['unitType', 'unit']));
+  const size = unitSize && unitType && !unitSize.toLowerCase().includes(unitType.toLowerCase())
+    ? `${unitSize} ${unitType}`
+    : unitSize;
+  const image = findImage(o);
+
+  return {
+    variantId: String(id),
+    quantity,
+    name: text(from(['productName', 'name', 'title', 'displayName'])),
+    size,
+    price: num(from(['finalPrice', 'unitPrice', 'sellingPrice', 'salePrice', 'price'])),
+    mrp: num(from(['mrp', 'mrpPrice', 'maximumRetailPrice'])),
+    imageUrl: image,
+  };
+}
+
+const CHARGE_LABELS: Record<string, string> = {
+  deliveryCharge: 'Delivery charge',
+  deliveryFee: 'Delivery charge',
+  handlingCharge: 'Handling charge',
+  handlingFee: 'Handling charge',
+  tax: 'Tax',
+  gst: 'GST',
+  discount: 'Discount',
+};
+
+/**
+ * GET the saved cart. The response shape isn't fixed, so this walks it and takes every object with a
+ * variant id (`variantId`, or `variant.id`) and a quantity as a line; bill amounts are read off the top.
+ */
+export async function fetchCart(cartApi: string): Promise<Cart> {
+  const body = await apiRequest<unknown>(resolveApiPath(cartApi));
+  const items: CartItem[] = [];
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 6 || !node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach((n) => visit(n, depth + 1));
+      return;
+    }
+    const item = toCartItem(node as Obj);
+    if (item) items.push(item);
+    else Object.values(node).forEach((v) => visit(v, depth + 1));
+  };
+  visit(body, 0);
+
+  // Bill amounts sit at the top level, or in a single wrapper object (`data`, `cart`, `records[0]`).
+  const top = isObj(body) ? body : {};
+  const wrapper = [top.data, top.cart, Array.isArray(top.records) ? top.records[0] : undefined].find(isObj);
+  const bill = { ...wrapper, ...top };
+  const charges = Object.entries(CHARGE_LABELS)
+    .map(([key, label]) => ({ label, amount: num(bill[key]) }))
+    .filter((c): c is { label: string; amount: number } => c.amount !== undefined && c.amount !== 0);
+  const grandTotal = num(pick(bill, ['grandTotal', 'totalAmount', 'total', 'payableAmount']));
+
+  return { items, charges, grandTotal };
+}
+
+/** DELETE `{createApi}/{variantId}`: takes the variant out of the cart (the POST won't accept quantity 0). */
+export function removeFromCart(createApi: string, variantId: string) {
+  const path = resolveApiPath(createApi).replace(/\/+$/, '');
+  return apiRequest<unknown>(`${path}/${encodeURIComponent(variantId)}`, { method: 'DELETE' });
+}
+
 /** DELETE a record through a row action's `dataApi`. */
 export function deleteRecord(dataApi: string, recordId: string) {
   return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'DELETE' });
