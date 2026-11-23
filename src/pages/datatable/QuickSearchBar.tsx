@@ -75,8 +75,8 @@ function DropdownFilter({ field, value, onChange, hint }: FilterProps & { hint?:
     <Select
       className={value ? classes.filled : undefined}
       leftSection={<IconAdjustmentsHorizontal size={16} />}
-      // With a value, the clear (×) button takes this spot.
-      rightSection={value ? undefined : <IconChevronDown size={16} className={classes.chevron} data-open={open || undefined} />}
+      // Our arrow replaces Mantine's ⇅ (it sits next to the × clear button when there is a value).
+      rightSection={<IconChevronDown size={16} className={classes.chevron} data-open={open || undefined} />}
       onDropdownOpen={() => setOpen(true)}
       onDropdownClose={() => setOpen(false)}
       checkIconPosition="right"

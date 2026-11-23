@@ -5,6 +5,7 @@ import { recordIdOf, type BlueprintAction } from '../../api/blueprint';
 import { deleteRecord, type DataRecord } from '../../api/records';
 import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction } from './actionDisplay';
 import CartDrawer from './CartDrawer';
+import titleClasses from './PageTitle.module.css';
 import { variantImagesById } from './cellValue';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
@@ -138,9 +139,12 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="center">
-        <Title order={2} c="indigo">
-          {title}
-        </Title>
+        <div className={titleClasses.wrap}>
+          <Title order={2} className={titleClasses.title}>
+            {title}
+          </Title>
+          <span className={titleClasses.bar} aria-hidden />
+        </div>
         <Group gap="sm">
           {(blueprint?.actions ?? []).map((a) => {
             const Icon = actionIcon(a);
