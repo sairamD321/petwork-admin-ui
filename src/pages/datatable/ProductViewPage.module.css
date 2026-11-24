@@ -1,0 +1,188 @@
+.page {
+  animation: pageIn 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The gallery stays in view while the details scroll (wide screens). */
+@media (min-width: 62em) {
+  .sticky {
+    position: sticky;
+    top: 16px;
+    /* Keeps the zoom panel (which opens over the details) above the unit boxes, Add button and icons. */
+    z-index: 20;
+  }
+}
+
+/* ---------- Gallery ---------- */
+.stage {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mantine-color-white);
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  animation: imageIn 320ms ease both;
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stage:hover .mainImage {
+  transform: scale(1.04);
+}
+
+@keyframes imageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Same blue discount tag as the product cards. */
+.ribbon {
+  position: absolute;
+  top: 0;
+  left: 18px;
+  z-index: 4;
+  padding: 7px 7px 9px;
+  background: var(--mantine-color-indigo-6);
+  color: white;
+  font-size: 12px;
+  line-height: 13px;
+  font-weight: 800;
+  text-align: center;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
+}
+
+.thumb {
+  width: 76px;
+  height: 76px;
+  padding: 6px;
+  border: 1.5px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-white);
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.thumb:hover {
+  border-color: var(--mantine-color-indigo-3);
+  transform: translateY(-2px);
+}
+
+.thumb[data-active] {
+  border-color: var(--mantine-color-indigo-6);
+  box-shadow: 0 0 0 3px rgb(45 81 143 / 0.14);
+}
+
+/* ---------- Details ---------- */
+.name {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--mantine-color-gray-9);
+}
+
+/* Unit choices: indigo outline and tint on the chosen one. */
+.unit {
+  position: relative;
+  min-width: 128px;
+  padding: 16px 14px 10px;
+  text-align: center;
+  border: 1.5px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-white);
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.unit:hover {
+  border-color: var(--mantine-color-indigo-3);
+  transform: translateY(-2px);
+}
+
+.unit:active {
+  transform: scale(0.98);
+}
+
+.unit[data-active] {
+  border-color: var(--mantine-color-indigo-6);
+  background: var(--mantine-color-indigo-0);
+  box-shadow: 0 4px 12px -4px rgb(45 81 143 / 0.3);
+}
+
+.unitBadge {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--mantine-color-indigo-6);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.why .whyIcon {
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.why:hover .whyIcon {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+/* Product information: label / value rows. */
+.specs {
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+
+.specRow {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.specRow:nth-child(odd) {
+  background: var(--mantine-color-gray-0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .mainImage {
+    animation: none;
+  }
+
+  .stage:hover .mainImage,
+  .thumb:hover,
+  .unit:hover,
+  .why:hover .whyIcon {
+    transform: none;
+  }
+}

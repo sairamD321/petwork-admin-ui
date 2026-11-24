@@ -41,7 +41,7 @@ export function actionLabel(a: BlueprintAction): string {
 /** Row actions that call `dataApi` with action `delete` remove the record (after confirming). */
 export const isDeleteAction = (a: BlueprintAction) => a.action.toLowerCase() === 'delete' && !!a.dataApi;
 
-/** Any cart-related action (the header "Cart", a row's "Add to Cart"); these are shown in green. */
+/** Any cart-related action (the header "Cart", a row's "Add to Cart"); these use the brand blue. */
 export const isCartNamed = (a: BlueprintAction) =>
   /cart/i.test(`${a.action} ${a.displayName} ${a.iconName ?? ''} ${a.iconToolTip ?? ''}`);
 
@@ -53,3 +53,6 @@ export const isEditAction = (a: BlueprintAction) =>
   a.action.trim().toLowerCase() === 'edit' ||
   actionLabel(a).trim().toLowerCase() === 'edit' ||
   actionIcon(a) === IconPencil;
+
+/** "View" row actions GET `dataApi` (with `{variantId}` filled in) and show the product page. */
+export const isViewAction = (a: BlueprintAction) => a.action.trim().toLowerCase() === 'view' && !!a.dataApi;

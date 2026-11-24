@@ -1,12 +1,12 @@
 import { Alert, Badge, Button, Group, Paper, SimpleGrid, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { createElement, lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { recordIdOf, type BlueprintAction } from '../../api/blueprint';
 import { deleteRecord, type DataRecord } from '../../api/records';
-import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction } from './actionDisplay';
+import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction, isViewAction } from './actionDisplay';
 import CartDrawer from './CartDrawer';
 import titleClasses from './PageTitle.module.css';
-import { variantImagesById } from './cellValue';
+import { cartVariantIdOf, variantImagesById } from './cellValue';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
 import { useCart } from './useCart';
@@ -14,6 +14,7 @@ import { useDataTable } from './useDataTable';
 
 // The form is only downloaded the first time someone opens it.
 const BlueprintFormPage = lazy(() => import('../form/BlueprintFormPage'));
+const ProductViewPage = lazy(() => import('./ProductViewPage'));
 
 interface DataTablePageProps {
   title: string;
@@ -30,10 +31,38 @@ interface OpenForm {
   recordId?: string;
 }
 
+/** The product page opened by a "view" action. */
+interface OpenView {
+  action: BlueprintAction;
+  variantId: string;
+}
+
 interface PendingDelete {
   action: BlueprintAction;
   recordId: string;
   name: string;
+}
+
+/** A page header button; cart buttons are brand blue and show how many units are in the cart. */
+function HeaderActionButton({ action, units = 0, onClick }: { action: BlueprintAction; units?: number; onClick: () => void }) {
+  const icon = actionIcon(action);
+  return (
+    <Button
+      color="indigo"
+      leftSection={icon ? createElement(icon, { size: 18 }) : undefined}
+      title={action.action}
+      onClick={onClick}
+      rightSection={
+        units > 0 ? (
+          <Badge size="sm" circle={units < 10} color="white" c="indigo.7" variant="filled">
+            {units}
+          </Badge>
+        ) : undefined
+      }
+    >
+      {actionLabel(action)}
+    </Button>
+  );
 }
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Something went wrong.');
@@ -45,6 +74,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     searchBlueprintUrl,
   );
   const [form, setForm] = useState<OpenForm | null>(null);
+  const [view, setView] = useState<OpenView | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -70,14 +100,24 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     window.scrollTo(0, 0);
     setForm(next);
   }
+  // The product page works the same way: its own history entry, so Back returns to the list.
+  function openView(next: OpenView) {
+    window.history.pushState({ blueprintForm: true }, '');
+    window.scrollTo(0, 0);
+    setView(next);
+  }
   const closeForm = () => window.history.back();
 
+  const overlayOpen = !!form || !!view;
   useEffect(() => {
-    if (!form) return;
-    const onPop = () => setForm(null);
+    if (!overlayOpen) return;
+    const onPop = () => {
+      setForm(null);
+      setView(null);
+    };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, [form]);
+  }, [overlayOpen]);
 
   function onHeaderAction(a: BlueprintAction) {
     // "Cart": GET its dataApi fresh and show the cart panel.
@@ -91,7 +131,10 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
 
   function onRowAction(a: BlueprintAction, record: DataRecord, name: string) {
     const recordId = recordIdOf(blueprint?.mappings, record);
-    if (isDeleteAction(a) && recordId) {
+    if (isViewAction(a)) {
+      const variantId = cartVariantIdOf(record);
+      if (variantId) openView({ action: a, variantId });
+    } else if (isDeleteAction(a) && recordId) {
       setDeleteError(null);
       setPendingDelete({ action: a, recordId, name: name || recordId });
     } else if (a.blueprintApi) {
@@ -115,6 +158,37 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     } finally {
       setDeleting(false);
     }
+  }
+
+  // The header "Cart" button and its panel; shown on the list and on the product page.
+  const cartButton = cartHeaderAction ? (
+    <HeaderActionButton action={cartHeaderAction} units={cartUnits} onClick={() => onHeaderAction(cartHeaderAction)} />
+  ) : null;
+  const cartDrawer = (
+    <CartDrawer
+      opened={cartOpen}
+      onClose={() => setCartOpen(false)}
+      cart={cart}
+      updateAction={cartUpdateAction}
+      fallbackImages={cartFallbackImages}
+    />
+  );
+
+  if (view) {
+    return (
+      <Suspense fallback={null}>
+        <ProductViewPage
+          action={view.action}
+          variantId={view.variantId}
+          title={actionLabel(view.action)}
+          subtitle={title}
+          cart={cart}
+          onBack={closeForm}
+          headerRight={cartButton}
+        />
+        {cartDrawer}
+      </Suspense>
+    );
   }
 
   if (form) {
@@ -146,27 +220,13 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
           <span className={titleClasses.bar} aria-hidden />
         </div>
         <Group gap="sm">
-          {(blueprint?.actions ?? []).map((a) => {
-            const Icon = actionIcon(a);
-            return (
-              <Button
-                key={a.action}
-                color={isCartNamed(a) ? 'green' : undefined}
-                leftSection={Icon ? <Icon size={18} /> : undefined}
-                title={a.action}
-                onClick={() => onHeaderAction(a)}
-                rightSection={
-                  a === cartHeaderAction && cartUnits > 0 ? (
-                    <Badge size="sm" circle={cartUnits < 10} color="white" c="green.8" variant="filled">
-                      {cartUnits}
-                    </Badge>
-                  ) : undefined
-                }
-              >
-                {actionLabel(a)}
-              </Button>
-            );
-          })}
+          {(blueprint?.actions ?? []).map((a) =>
+            a === cartHeaderAction ? (
+              <span key={a.action}>{cartButton}</span>
+            ) : (
+              <HeaderActionButton key={a.action} action={a} onClick={() => onHeaderAction(a)} />
+            ),
+          )}
         </Group>
       </Group>
 
@@ -205,23 +265,18 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
           pageLoading={pageLoading}
           onPageChange={goToPage}
           onRecordClick={(record, name) => {
-            const editAction = state.blueprint.rowLevelactions?.find(
-              (action) => isEditAction(action) && !!action.blueprintApi,
-            );
-            if (editAction) onRowAction(editAction, record, name);
+            // Clicking a record views it when there is a "view" action (shown or not), else edits it.
+            const actions = state.blueprint.rowLevelactions ?? [];
+            const clickAction =
+              actions.find(isViewAction) ?? actions.find((action) => isEditAction(action) && !!action.blueprintApi);
+            if (clickAction) onRowAction(clickAction, record, name);
           }}
           onRowAction={onRowAction}
           cart={cart}
         />
       )}
 
-      <CartDrawer
-        opened={cartOpen}
-        onClose={() => setCartOpen(false)}
-        cart={cart}
-        updateAction={cartUpdateAction}
-        fallbackImages={cartFallbackImages}
-      />
+      {cartDrawer}
 
       {pendingDelete && (
         <ConfirmDeleteModal

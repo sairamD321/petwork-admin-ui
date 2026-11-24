@@ -24,6 +24,8 @@ export interface BlueprintAction {
   dataApi?: string;
   /** Endpoint this action POSTs to, e.g. the cart for "Add to Cart". */
   createApi?: string;
+  /** `false`: no button/icon is shown, but the action still runs (e.g. "view" on clicking a record). */
+  display?: boolean;
 }
 
 export type DisplayMode = 'table' | 'cards';

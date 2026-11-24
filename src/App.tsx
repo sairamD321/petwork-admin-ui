@@ -5,7 +5,6 @@ import {
   Center,
   Group,
   Loader,
-  Text,
   Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -14,6 +13,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from './api/menu';
 import { clearSession, getSession, onUnauthorized, saveSession } from './api/session';
 import SideNav from './components/SideNav';
+import titleClasses from './pages/datatable/PageTitle.module.css';
 
 // Split into their own chunks: only downloaded when actually shown.
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -43,6 +43,20 @@ function findItem(items: MenuItem[], id: string): MenuItem | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+/** The page opened after signing in: the Dashboard menu item, or else the first item. */
+function findStartItem(items: MenuItem[]): MenuItem | undefined {
+  const isDashboard = (item: MenuItem) => /dashboard|home/i.test(`${item.id} ${item.label}`);
+  const search = (list: MenuItem[]): MenuItem | undefined => {
+    for (const item of list) {
+      if (isDashboard(item)) return item;
+      const found = search(item.children ?? []);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return search(items) ?? items[0];
 }
 
 const pageFallback = (
@@ -92,21 +106,29 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [activeId, setActiveId] = useState<string | null>(readPageId);
   const [active, setActive] = useState<MenuItem | null>(null);
 
-  // After a reload only the id is known; look the item up in the menu.
+  const [menuFailed, setMenuFailed] = useState(false);
+
+  // On start only the id from the URL is known (or none, right after signing in): look the item
+  // up in the menu, falling back to the Dashboard.
   useEffect(() => {
-    if (!activeId || active) return;
+    if (active) return;
     let cancelled = false;
     fetchMenu()
       .then((items) => {
         if (cancelled) return;
-        const item = findItem(items, activeId);
-        if (item) setActive(item);
-        else {
+        const item = (activeId ? findItem(items, activeId) : undefined) ?? findStartItem(items);
+        if (item) {
+          setActive(item);
+          setActiveId(item.id);
+          writePageId(item.id);
+        } else {
           setActiveId(null);
           writePageId(null);
         }
       })
-      .catch(() => {}); // the sidebar shows the menu error
+      .catch(() => {
+        if (!cancelled) setMenuFailed(true); // the sidebar shows the menu error
+      });
     return () => {
       cancelled = true;
     };
@@ -170,13 +192,16 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               searchBlueprintUrl={active.searchBlueprintUrl}
             />
           </Suspense>
-        ) : (
-          <>
-            <Title order={2} mb="xs">
-              {active?.label ?? 'Welcome'}
+        ) : active ? (
+          // Same heading style as the list pages: gradient text and a growing accent bar.
+          <div className={titleClasses.wrap} key={active.id}>
+            <Title order={2} className={titleClasses.title}>
+              {active.label}
             </Title>
-            {!active && <Text c="dimmed">Select an item from the menu to get started.</Text>}
-          </>
+            <span className={titleClasses.bar} aria-hidden />
+          </div>
+        ) : menuFailed ? null : (
+          pageFallback
         )}
       </AppShell.Main>
     </AppShell>
