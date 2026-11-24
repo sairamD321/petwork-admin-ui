@@ -18,7 +18,7 @@ import {
   IconAlertCircle,
   IconArrowLeft,
   IconPhotoOff,
-  IconPrinter,
+  IconArrowRight,
   IconReceipt,
   IconShoppingBag,
   IconShoppingCartOff,
@@ -110,7 +110,7 @@ function ItemRow({ item, quantity, cart, updateAction, imageUrl }: {
   );
 }
 
-/** "My Cart": the saved cart's items with − qty + steppers, the bill, and a Print receipt bar. */
+/** "My Cart": the saved cart's items with − qty + steppers, the bill, and a Checkout bar. */
 export default function CartDrawer({ opened, onClose, cart, updateAction, fallbackImages }: CartDrawerProps) {
   const { load } = cart;
   const saved = load.status === 'ready' ? load.cart : null;
@@ -199,7 +199,7 @@ export default function CartDrawer({ opened, onClose, cart, updateAction, fallba
           <Stack gap="md">
             <Paper radius="lg" p="md" withBorder>
               <Group gap="sm" mb="md" wrap="nowrap">
-                <ThemeIcon size={44} radius="md" variant="light" color="green">
+                <ThemeIcon size={44} radius="md" variant="light" color="indigo">
                   <IconShoppingBag size={24} />
                 </ThemeIcon>
                 <div>
@@ -261,7 +261,7 @@ export default function CartDrawer({ opened, onClose, cart, updateAction, fallba
         )}
       </Box>
 
-      {/* Footer: total and Print receipt (no action yet). */}
+      {/* Footer: total and Checkout (no action yet). */}
       {saved && lines.length > 0 && (
         <Box p="md" style={{ borderTop: '1px solid var(--mantine-color-gray-2)', background: 'var(--mantine-color-white)' }}>
           <Group
@@ -269,7 +269,7 @@ export default function CartDrawer({ opened, onClose, cart, updateAction, fallba
             wrap="nowrap"
             px="md"
             py="sm"
-            style={{ background: 'var(--mantine-color-green-7)', borderRadius: 'var(--mantine-radius-md)' }}
+            style={{ background: 'var(--mantine-color-indigo-6)', borderRadius: 'var(--mantine-radius-md)' }}
           >
             <div>
               <Text c="white" fw={700} size="lg" lh={1.2}>
@@ -279,8 +279,8 @@ export default function CartDrawer({ opened, onClose, cart, updateAction, fallba
                 Total
               </Text>
             </div>
-            <Button variant="white" color="green.8" leftSection={<IconPrinter size={18} />} radius="md">
-              Print receipt
+            <Button variant="white" color="indigo.7" rightSection={<IconArrowRight size={18} />} radius="md">
+              Checkout
             </Button>
           </Group>
         </Box>

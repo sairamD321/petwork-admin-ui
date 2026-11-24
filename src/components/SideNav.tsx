@@ -1,5 +1,12 @@
 import { Alert, Box, Button, NavLink, Skeleton, Stack, Text } from '@mantine/core';
-import { IconAlertCircle, IconHome, IconShoppingBag, IconTag } from '@tabler/icons-react';
+import {
+  IconAlertCircle,
+  IconHome,
+  IconLayoutGrid,
+  IconRosetteDiscount,
+  IconShoppingBag,
+  IconTag,
+} from '@tabler/icons-react';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from '../api/menu';
 import classes from './SideNav.module.css';
@@ -23,15 +30,18 @@ const MENU_ICONS: { match: RegExp; Icon: typeof IconHome }[] = [
   { match: /home|dashboard/i, Icon: IconHome },
   { match: /inventory|catalog/i, Icon: IconTag },
   { match: /order/i, Icon: IconShoppingBag },
+  { match: /discount|offer|coupon|promo|deal/i, Icon: IconRosetteDiscount },
 ];
 
 function menuIcon(item: MenuItem) {
   const found = MENU_ICONS.find(({ match }) => match.test(item.icon ?? '') || match.test(item.label));
-  return found ? (
+  // Menus without a matching icon get a neutral one, so no main menu is ever left bare.
+  const Icon = found?.Icon ?? IconLayoutGrid;
+  return (
     <Box className={classes.iconTile}>
-      <found.Icon size={18} stroke={1.8} />
+      <Icon size={18} stroke={1.8} />
     </Box>
-  ) : undefined;
+  );
 }
 
 /** Mantine NavLink parts styled by SideNav.module.css. */

@@ -1,5 +1,5 @@
 
-import { Button, Center, Group, Loader, Paper, SegmentedControl, SimpleGrid, Text } from '@mantine/core';
+import { Button, Center, Group, Loader, Paper, SegmentedControl, Text } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -130,7 +130,8 @@ export default function DataTableView({
     };
   };
 
-  const rowActions = blueprint.rowLevelactions ?? [];
+  // Actions with `display: false` get no icon (they still run, e.g. "view" when a record is clicked).
+  const rowActions = (blueprint.rowLevelactions ?? []).filter((a) => a.display !== false);
   const renderActions = rowActions.length
     ? (r: DataRecord, variant?: 'icons' | 'buttons') => (
         <RowActions

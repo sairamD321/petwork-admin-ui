@@ -1,0 +1,198 @@
+/*
+ * Product page "Add to cart": a compact brand-blue pill (#2D518F) with a soft glow.
+ * The button and the − qty + stepper share one size, so switching between them never shifts the layout.
+ */
+.add,
+.stepper {
+  width: 148px;
+  height: 40px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--mantine-color-indigo-5), var(--mantine-color-indigo-7));
+  color: var(--mantine-color-white);
+  box-shadow:
+    0 6px 14px -6px rgb(45 81 143 / 0.65),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.add {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease,
+    filter 240ms ease;
+}
+
+/* A soft light sweep across the pill on hover. */
+.add::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.3) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 750ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.add:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 22px -10px rgb(45 81 143 / 0.75),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.add:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+.add:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 120ms;
+}
+
+.add:focus-visible {
+  outline: 3px solid var(--mantine-color-indigo-2);
+  outline-offset: 2px;
+}
+
+.add:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.3) brightness(1.15);
+  box-shadow: none;
+}
+
+.add[data-sending] {
+  cursor: progress;
+  filter: none;
+}
+
+/* White disc holding the cart icon, at the left end of the pill. */
+.addIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mantine-color-white);
+  color: var(--mantine-color-indigo-6);
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.add[data-sending] .addIcon {
+  background: rgb(255 255 255 / 0.2);
+}
+
+.add:hover:not(:disabled) .addIcon {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+/* ---------- After adding: − qty + ---------- */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+  animation: stepperIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes stepperIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0.5;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.stepBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.16);
+  color: var(--mantine-color-white);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stepBtn:hover:not(:disabled) {
+  background: var(--mantine-color-white);
+  color: var(--mantine-color-indigo-6);
+}
+
+.stepBtn:active:not(:disabled) {
+  transform: scale(0.88);
+}
+
+.stepBtn:focus-visible {
+  outline: 2px solid var(--mantine-color-white);
+  outline-offset: 1px;
+}
+
+.stepBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.qty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  color: var(--mantine-color-white);
+}
+
+.qtyValue {
+  font-size: 15px;
+  font-weight: 800;
+  animation: qtyPop 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.qtyLabel {
+  margin-top: 2px;
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+@keyframes qtyPop {
+  from {
+    transform: translateY(4px) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add,
+  .add::after,
+  .addIcon,
+  .stepBtn {
+    transition: none;
+  }
+
+  .stepper,
+  .qtyValue {
+    animation: none;
+  }
+}

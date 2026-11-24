@@ -48,7 +48,7 @@
   min-width: 42px;
   padding: 5px 4px 4px;
   border-radius: 0 0 4px 0;
-  background: #1683d8;
+  background: var(--mantine-color-indigo-6);
   color: white;
   font-size: 11px;
   line-height: 12px;

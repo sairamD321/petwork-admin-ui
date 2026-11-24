@@ -24,8 +24,8 @@
 
 /* The solid indigo pill that glides behind the selected option. */
 .root .indicator {
-  background-color: var(--mantine-color-indigo-5);
-  box-shadow: 0 2px 6px rgb(76 110 245 / 0.3);
+  background-color: var(--mantine-color-indigo-6);
+  box-shadow: 0 2px 6px rgb(45 81 143 / 0.3);
 }
 
 /* Text size is worked out in SlidingRadio.tsx so every option fits in full. */
@@ -117,10 +117,10 @@
 
 .wrapOption[data-active],
 .wrapOption[data-active]:hover {
-  background: var(--mantine-color-indigo-5);
+  background: var(--mantine-color-indigo-6);
   color: var(--mantine-color-white);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgb(76 110 245 / 0.3);
+  box-shadow: 0 2px 6px rgb(45 81 143 / 0.3);
 }
 
 .wrapOption:focus-visible {

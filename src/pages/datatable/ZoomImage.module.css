@@ -1,0 +1,123 @@
+.wrap {
+  position: relative;
+  --lens-x: 0%;
+  --lens-y: 0%;
+  --shift-x: 0%;
+  --shift-y: 0%;
+}
+
+/* The picture itself: square, framed, the whole image visible. */
+.stage {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mantine-color-white);
+}
+
+.image,
+.paneImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  object-fit: contain;
+  user-select: none;
+}
+
+.image {
+  animation: imageIn 320ms ease both;
+}
+
+@keyframes imageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Lens: a clear square over the area being magnified; the rest of the picture dims a little. */
+.lens {
+  position: absolute;
+  z-index: 3;
+  left: var(--lens-x);
+  top: var(--lens-y);
+  width: calc(100% / var(--zoom));
+  height: calc(100% / var(--zoom));
+  border: 1.5px solid rgb(45 81 143 / 0.55);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.12);
+  box-shadow: 0 0 0 9999px rgb(15 23 42 / 0.14);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+/* Zoom panel: same size as the picture, floating just to its right (over the details). */
+.pane {
+  position: absolute;
+  z-index: 50;
+  top: 0;
+  left: calc(100% + var(--mantine-spacing-xl));
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mantine-color-white);
+  box-shadow:
+    0 24px 48px -16px rgb(45 81 143 / 0.28),
+    0 4px 12px rgb(16 24 40 / 0.06);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-8px) scale(0.98);
+  transform-origin: left center;
+  transition:
+    opacity 240ms ease,
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 300ms;
+}
+
+/* The enlarged copy, shifted so the lens area fills the panel. */
+.paneImage {
+  transform-origin: 0 0;
+  transform: translate(var(--shift-x), var(--shift-y)) scale(var(--zoom));
+  will-change: transform;
+}
+
+/* Only with a real mouse and room beside the picture (wide screens). */
+@media (hover: hover) and (min-width: 62em) {
+  .stage {
+    cursor: crosshair;
+  }
+
+  .stage:hover .lens {
+    opacity: 1;
+  }
+
+  .stage:hover ~ .pane {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 240ms ease,
+      transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image {
+    animation: none;
+  }
+
+  .pane,
+  .stage:hover ~ .pane {
+    transform: none;
+  }
+}

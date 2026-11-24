@@ -94,7 +94,11 @@ export function createRecord(createApi: string, body: Record<string, unknown> | 
  * Accepts the record itself or an envelope: `{ records: [..] }`, `{ record }` or `{ data }`.
  */
 export async function fetchRecord(dataApi: string, recordId: string): Promise<DataRecord> {
-  const body = await apiRequest<unknown>(resolveRecordPath(dataApi, recordId));
+  return unwrapRecord(await apiRequest<unknown>(resolveRecordPath(dataApi, recordId)));
+}
+
+/** The one record in a response: bare, or inside `{ records: [..] }`, `{ record }` or `{ data }`. */
+function unwrapRecord(body: unknown): DataRecord {
   const isObject = (v: unknown): v is DataRecord => !!v && typeof v === 'object' && !Array.isArray(v);
   if (Array.isArray(body)) return isObject(body[0]) ? body[0] : {};
   if (!isObject(body)) return {};
@@ -103,6 +107,13 @@ export async function fetchRecord(dataApi: string, recordId: string): Promise<Da
   if (isObject(body.record)) return body.record;
   if (isObject(body.data)) return body.data;
   return body;
+}
+
+/** GET a "view" action's `dataApi` for one variant (`{variantId}` filled in), always fresh. */
+export async function fetchVariantDetails(dataApi: string, variantId: string): Promise<DataRecord> {
+  const id = encodeURIComponent(variantId);
+  const path = dataApi.replace(/\{(variantId|varientId|recordId|id)\}/gi, id);
+  return unwrapRecord(await apiRequest<unknown>(resolveApiPath(path)));
 }
 
 /** PATCH changes to a record through a form blueprint's `dataApi` (the backend's update routes are PATCH). */
