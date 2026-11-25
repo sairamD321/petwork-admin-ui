@@ -16,8 +16,10 @@ export type DataTableState =
       records: DataRecord[];
       page: number;
       hasNext: boolean;
-      /** Fields the search box covers (`quickSearchFilter` in the search blueprint). */
+      /** Fields shown in the search bar (`quickSearchFilter: true` in the search blueprint). */
       quickSearchFields: SearchField[];
+      /** Every other search field; these live behind the bar's "More filters" button. */
+      moreFilterFields: SearchField[];
     };
 
 /** Loads the table blueprint, then the records from its `dataApi`, plus the optional search blueprint. */
@@ -36,12 +38,12 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
     // Search is optional: if its blueprint fails, still show the table without a search box.
     const search = searchBlueprintUrl
       ? fetchSearchBlueprint(searchBlueprintUrl)
-          .then((bp) => (bp.searchForm ?? []).filter((f) => f.quickSearchFilter))
-          .catch(() => [])
-      : Promise.resolve([]);
+          .then((bp) => bp.searchForm ?? [])
+          .catch((): SearchField[] => [])
+      : Promise.resolve<SearchField[]>([]);
 
     Promise.all([table, search])
-      .then(([{ blueprint, result }, quickSearchFields]) => {
+      .then(([{ blueprint, result }, searchFields]) => {
         if (!cancelled) {
           setState({
             status: 'ready',
@@ -49,7 +51,8 @@ export function useDataTable(tableBlueprintUrl: string, searchBlueprintUrl?: str
             records: result.records,
             page,
             hasNext: result.hasNext,
-            quickSearchFields,
+            quickSearchFields: searchFields.filter((f) => f.quickSearchFilter === true),
+            moreFilterFields: searchFields.filter((f) => f.quickSearchFilter !== true),
           });
         }
       })

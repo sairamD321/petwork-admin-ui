@@ -213,8 +213,10 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
   }
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between" align="center">
+    // Fills the screen below the header (60px) minus the shell's padding, so the page itself never
+    // scrolls: the heading, cart button and search stay put and only the product list scrolls.
+    <Stack gap="lg" style={{ height: 'calc(100dvh - 60px - 2 * var(--mantine-spacing-md))' }}>
+      <Group justify="space-between" align="center" style={{ flexShrink: 0 }}>
         <div className={titleClasses.wrap}>
           <Title order={2} className={titleClasses.title}>
             {title}
@@ -233,7 +235,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
       </Group>
 
       {state.status === 'loading' && (
-        <Paper withBorder radius="lg" p="lg">
+        <Paper withBorder radius="lg" p="lg" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 6 }} spacing="lg">
             {Array.from({ length: 12 }, (_, i) => (
               <Stack key={i} gap={8}>
@@ -262,6 +264,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
           blueprint={state.blueprint}
           records={state.records}
           quickSearchFields={state.quickSearchFields}
+          moreFilterFields={state.moreFilterFields}
           page={state.page}
           hasNext={state.hasNext}
           pageLoading={pageLoading}
