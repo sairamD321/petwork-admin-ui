@@ -191,6 +191,23 @@ export function variantImagesById(records: Record<string, unknown>[]): Record<st
   return out;
 }
 
+/** Variant id -> the product card's title (brand + name + flavour + ...), so the cart and invoice match the cards. */
+export function variantTitlesById(records: Record<string, unknown>[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const record of records) {
+    const title = productCardTitleOf(record);
+    if (!title) continue;
+    const variants = Array.isArray(record.variants) ? record.variants : [record];
+    for (const v of variants) {
+      if (!v || typeof v !== 'object') continue;
+      const id = cardNestedValue(v as Record<string, unknown>, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
+      if (id === undefined || typeof id === 'object') continue;
+      out[String(id)] = title;
+    }
+  }
+  return out;
+}
+
 /** A column meant to hold a picture, judged by its field or heading (e.g. "Image"). */
 export const isImageColumn = (c: { field: string; displayName: string }) =>
   /image|photo|picture|thumbnail/i.test(`${c.field} ${c.displayName}`);

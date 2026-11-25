@@ -1,6 +1,7 @@
 import { resolveApiPath, resolveRecordPath } from './blueprint';
 import { shareInFlight } from './cache';
 import { apiRequest } from './client';
+import { productCardTitleOf } from '../pages/datatable/cellValue';
 
 /** A row from a blueprint's `dataApi`; its shape is described by the blueprint's columns. */
 export type DataRecord = Record<string, unknown>;
@@ -219,7 +220,8 @@ function toCartItem(o: Obj): CartItem | undefined {
   return {
     variantId: String(id),
     quantity,
-    name: text(from(['productName', 'name', 'title', 'displayName'])),
+    // Same title as the product cards (brand + name + flavour + ...), else the plain name.
+    name: productCardTitleOf(o) || text(from(['productName', 'name', 'title', 'displayName'])),
     size,
     price: num(from(['finalPrice', 'unitPrice', 'sellingPrice', 'salePrice', 'price'])),
     mrp: num(from(['mrp', 'mrpPrice', 'maximumRetailPrice'])),

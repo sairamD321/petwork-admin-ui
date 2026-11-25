@@ -6,7 +6,7 @@ import { deleteRecord, type DataRecord } from '../../api/records';
 import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction, isViewAction } from './actionDisplay';
 import CartDrawer from './CartDrawer';
 import titleClasses from './PageTitle.module.css';
-import { cartVariantIdOf, variantImagesById } from './cellValue';
+import { cartVariantIdOf, variantImagesById, variantTitlesById } from './cellValue';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
 import { useCart } from './useCart';
@@ -91,6 +91,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
   // Pictures for cart lines whose cart data has none: the matching variant's image from the loaded products.
   const loadedRecords = state.status === 'ready' ? state.records : undefined;
   const cartFallbackImages = useMemo(() => variantImagesById(loadedRecords ?? []), [loadedRecords]);
+  const cartProductTitles = useMemo(() => variantTitlesById(loadedRecords ?? []), [loadedRecords]);
   const cartUnits = Object.values(cart.quantities).reduce((n, q) => n + (q > 0 ? q : 0), 0);
 
   // The form is a page of its own: opening it adds a history entry, so the browser's
@@ -171,6 +172,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
       cart={cart}
       updateAction={cartUpdateAction}
       fallbackImages={cartFallbackImages}
+      productTitles={cartProductTitles}
     />
   );
 
