@@ -11,7 +11,7 @@ export type SearchResults =
   | { status: 'ready'; records: DataRecord[]; hasMore: boolean; loadingMore: boolean };
 
 /**
- * Fetches `{dataApi}?field=value&page=0&size=20` from the backend whenever the filters change.
+ * Fetches `{dataApi}?field=value&page=0&size=24` from the backend whenever the filters change.
  * `debounce` delays the request while the user is still typing. `version` refetches after a save or delete.
  */
 export function useSearchResults(
@@ -57,7 +57,7 @@ export function useSearchResults(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataApi, key, active, version]);
 
-  /** Appends the next page of 20. */
+  /** Appends the next page of 24. */
   function loadMore() {
     if (results.status !== 'ready' || !results.hasMore || results.loadingMore) return;
     const id = requestId.current;

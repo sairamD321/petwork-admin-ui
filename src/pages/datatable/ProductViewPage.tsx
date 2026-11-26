@@ -89,8 +89,9 @@ export default function ProductViewPage({ action, variantId, title, subtitle, ca
   };
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
+    // Fills the screen like the list page: the header (back, title, cart) stays put and only the product scrolls.
+    <Stack gap="lg" style={{ height: 'calc(100dvh - 60px - 2 * var(--mantine-spacing-md))' }}>
+      <Group justify="space-between" align="flex-start" wrap="nowrap" style={{ flexShrink: 0 }}>
         <Group gap="md" align="flex-start" wrap="nowrap">
           <ActionIcon variant="default" size={44} radius="md" aria-label="Back" onClick={onBack}>
             <IconArrowLeft size={20} />
@@ -110,6 +111,9 @@ export default function ProductViewPage({ action, variantId, title, subtitle, ca
         </Group>
         {headerRight}
       </Group>
+
+      {/* Small padding (offset by the negative margin) so the card's border and shadow aren't clipped. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: -6, padding: 6 }}>
 
       {load.status === 'loading' && (
         <Paper withBorder radius="lg" p="lg">
@@ -154,6 +158,7 @@ export default function ProductViewPage({ action, variantId, title, subtitle, ca
           cart={cart}
         />
       )}
+      </div>
     </Stack>
   );
 }
@@ -177,40 +182,45 @@ function ProductBody({ view, selected, onSelect, imageIndex, onImage, cart }: {
       <Grid gap="xl">
         {/* ---------- Gallery ---------- */}
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="md" className={classes.sticky}>
-            {image ? (
-              // Hover the picture: a lens follows the cursor and a magnified view opens beside it.
-              <ZoomImage src={image} alt={view.name}>
-                {hasDiscount && (
-                  <Box className={classes.ribbon}>
-                    {Math.round(variant.discount!)}%<br />OFF
-                  </Box>
-                )}
-              </ZoomImage>
-            ) : (
-              <Box className={classes.stage}>
-                <Center h="100%">
-                  <IconPhotoOff size={48} color="var(--mantine-color-gray-4)" />
-                </Center>
-              </Box>
+          {/* Thumbnails in a column on the left, the main picture filling the rest. */}
+          <div className={`${classes.gallery} ${classes.sticky}`}>
+            {images.length > 1 && (
+              <div className={classes.thumbRail}>
+                <div className={classes.thumbList}>
+                  {images.map((src, i) => (
+                    <UnstyledButton
+                      key={src}
+                      className={classes.thumb}
+                      data-active={i === imageIndex || undefined}
+                      aria-label={`Picture ${i + 1}`}
+                      onClick={() => onImage(i)}
+                    >
+                      <Image src={src} alt="" w="100%" h="100%" fit="contain" loading="lazy" />
+                    </UnstyledButton>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {images.length > 1 && (
-              <Group gap="sm" wrap="wrap">
-                {images.map((src, i) => (
-                  <UnstyledButton
-                    key={src}
-                    className={classes.thumb}
-                    data-active={i === imageIndex || undefined}
-                    aria-label={`Picture ${i + 1}`}
-                    onClick={() => onImage(i)}
-                  >
-                    <Image src={src} alt="" w="100%" h="100%" fit="contain" loading="lazy" />
-                  </UnstyledButton>
-                ))}
-              </Group>
-            )}
-          </Stack>
+            <div className={classes.mainFrame}>
+              {image ? (
+                // Hover the picture: a lens follows the cursor and a magnified view opens beside it.
+                <ZoomImage src={image} alt={view.name}>
+                  {hasDiscount && (
+                    <Box className={classes.ribbon}>
+                      {Math.round(variant.discount!)}%<br />OFF
+                    </Box>
+                  )}
+                </ZoomImage>
+              ) : (
+                <Box className={classes.stage}>
+                  <Center h="100%">
+                    <IconPhotoOff size={48} color="var(--mantine-color-gray-4)" />
+                  </Center>
+                </Box>
+              )}
+            </div>
+          </div>
         </Grid.Col>
 
         {/* ---------- Details ---------- */}

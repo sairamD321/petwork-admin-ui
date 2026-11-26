@@ -11,7 +11,7 @@ export interface RecordPage {
   hasNext: boolean;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 24;
 
 /** Accepts either a bare array or a `{ records: [...] }` envelope. */
 function toRecords(body: unknown): DataRecord[] {
@@ -66,10 +66,10 @@ export function fetchRecords(dataApi: string, page: number): Promise<RecordPage>
 export const fetchOptions = shareInFlight(async (api: string) => toRecords(await apiRequest<unknown>(resolveApiPath(api))));
 
 /** Page size for filtered searches. */
-export const SEARCH_PAGE_SIZE = 20;
+export const SEARCH_PAGE_SIZE = 24;
 
 /**
- * GET `{dataApi}?field=value&...&page={page}&size=20` — the backend does the filtering.
+ * GET `{dataApi}?field=value&...&page={page}&size=24` — the backend does the filtering.
  * Not cached: filters change with every keystroke and results must stay fresh.
  */
 export async function searchRecords(

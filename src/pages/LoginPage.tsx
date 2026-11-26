@@ -1,5 +1,6 @@
 import { Box, Group, Stack, Text } from '@mantine/core';
 import { IconMessages, IconPaw, IconShieldCheck, IconShoppingBag } from '@tabler/icons-react';
+import logoUrl from '../assets/petwork-logo.png';
 import { useState } from 'react';
 import type { Session } from '../api/session';
 import classes from './LoginPage.module.css';
@@ -43,7 +44,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         <Group gap="sm" className={classes.logo}>
           <div className={classes.logoMark}>
-            <IconPaw size={26} stroke={1.8} />
+            <img src={logoUrl} alt="PetWork" className={classes.logoImg} />
           </div>
           <div>
             <Text className={classes.logoName}>PetWork</Text>
@@ -99,7 +100,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <Box className={classes.formWrap}>
           <Group gap="sm" className={classes.mobileLogo}>
             <div className={classes.logoMarkSolid}>
-              <IconPaw size={22} stroke={1.8} />
+              <img src={logoUrl} alt="PetWork" className={classes.logoImg} />
             </div>
             <Text fw={800} fz="lg">
               PetWork Admin

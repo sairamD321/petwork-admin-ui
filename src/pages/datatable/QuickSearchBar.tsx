@@ -203,12 +203,39 @@ interface FilterProps {
 function DropdownFilter({ field, value, onChange, hint, inPopover }: FilterProps & { hint?: string; inPopover?: boolean }) {
   const { options, failed } = useSearchOptions(field);
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const disabled = field.editable === false;
   return (
     <Select
+      ref={inputRef}
       className={value ? classes.filled : undefined}
       leftSection={<IconAdjustmentsHorizontal size={16} />}
       // Our arrow replaces Mantine's ⇅ (it sits next to the × clear button when there is a value).
-      rightSection={<IconChevronDown size={16} className={classes.chevron} data-open={open || undefined} />}
+      // It is a real toggle: one click opens the menu, the next click closes it.
+      rightSection={
+        <span
+          role="button"
+          tabIndex={-1}
+          aria-label={open ? `Close ${field.displayName} options` : `Open ${field.displayName} options`}
+          className={classes.chevronButton}
+          // Toggle on press. The menu closes on any mousedown outside the input, and the arrow
+          // counts as outside, so stopPropagation keeps that listener (on document) from closing
+          // it first, and preventDefault keeps focus in the input so a blur doesn't either.
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (disabled) return;
+            if (!open) inputRef.current?.focus();
+            setOpen(!open);
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <IconChevronDown size={16} className={classes.chevron} data-open={open || undefined} />
+        </span>
+      }
+      rightSectionPointerEvents="all"
+      dropdownOpened={open}
       onDropdownOpen={() => setOpen(true)}
       onDropdownClose={() => setOpen(false)}
       checkIconPosition="right"
@@ -218,7 +245,7 @@ function DropdownFilter({ field, value, onChange, hint, inPopover }: FilterProps
       data={options}
       value={value || null}
       onChange={(v) => onChange(v ?? '')}
-      disabled={field.editable === false}
+      disabled={disabled}
       description={failed ? 'Could not load options' : hint}
       error={failed || undefined}
       inputWrapperOrder={HINT_BELOW}
