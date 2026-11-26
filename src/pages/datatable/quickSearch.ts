@@ -10,13 +10,24 @@ export interface SearchOption {
 
 export const isDropdown = (f: SearchField) => f.fieldType === 'dropDown' || f.fieldType === 'cascadeDropDown';
 
-/** Turns option rows into `{ value, label }` using the field's `dropdownCode` / `dropdownValue`. */
+/**
+ * Turns option rows into `{ value, label }` using the field's `dropdownCode` / `dropdownValue`.
+ * Duplicate values are dropped: the backend can repeat entries (e.g. brands), and Mantine's Select
+ * throws on duplicates, which blanks the whole page.
+ */
 export function toOptions(f: SearchField, rows: Record<string, unknown>[]): SearchOption[] {
   const code = f.dropdownCode ?? 'code';
   const name = f.dropdownValue ?? 'name';
-  return rows
-    .filter((r) => r[code] !== undefined && r[code] !== null)
-    .map((r) => ({ value: String(r[code]), label: String(r[name] ?? r[code]) }));
+  const seen = new Set<string>();
+  const out: SearchOption[] = [];
+  for (const r of rows) {
+    if (r[code] === undefined || r[code] === null) continue;
+    const value = String(r[code]);
+    if (seen.has(value)) continue;
+    seen.add(value);
+    out.push({ value, label: String(r[name] ?? r[code]) });
+  }
+  return out;
 }
 
 /** Text searches only kick in once the blueprint's `minSize` is reached. */

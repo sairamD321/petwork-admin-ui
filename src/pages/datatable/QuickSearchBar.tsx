@@ -1,13 +1,29 @@
-import { CloseButton, Group, Select, TextInput, type MantineTransition } from '@mantine/core';
-import { IconAdjustmentsHorizontal, IconChevronDown, IconSearch } from '@tabler/icons-react';
-import { useState } from 'react';
+import {
+  ActionIcon,
+  Button,
+  CloseButton,
+  Group,
+  Indicator,
+  Paper,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  type MantineTransition,
+} from '@mantine/core';
+import { IconAdjustmentsHorizontal, IconChevronDown, IconFilter, IconSearch } from '@tabler/icons-react';
+import { useClickOutside } from '@mantine/hooks';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { SearchField } from '../../api/blueprint';
 import { isActive, isDropdown, minLength, type QuickSearch } from './quickSearch';
 import classes from './QuickSearchBar.module.css';
 import { useSearchOptions } from './useSearchOptions';
 
 interface QuickSearchBarProps {
+  /** Shown inline in the bar (`quickSearchFilter: true`). */
   fields: SearchField[];
+  /** Every other search field; shown in the filter button's panel. No button when empty. */
+  moreFields?: SearchField[];
   search: QuickSearch;
   onChange: (search: QuickSearch) => void;
   /** Search status ("Searching...", "20 results"), shown under the last active filter. */
@@ -42,23 +58,139 @@ const DROPDOWN_CLASSES = {
   empty: classes.empty,
 };
 
-/** One filter per quick-search field, in blueprint order, all on one line. */
-export default function QuickSearchBar({ fields, search, onChange, resultHint }: QuickSearchBarProps) {
+/**
+ * One filter per quick-search field, in blueprint order, all on one line.
+ * The remaining fields sit behind a square filter button at the right end of the bar.
+ */
+export default function QuickSearchBar({ fields, moreFields = [], search, onChange, resultHint }: QuickSearchBarProps) {
   const lastActive = fields.filter((f) => isActive(f, search[f.field])).at(-1);
+  const renderFilter = (f: SearchField, hint?: string, inPopover?: boolean) => {
+    const value = search[f.field] ?? '';
+    const set = (v: string) => onChange({ ...search, [f.field]: v });
+    return isDropdown(f) ? (
+      <DropdownFilter key={f.field} field={f} value={value} onChange={set} hint={hint} inPopover={inPopover} />
+    ) : (
+      <TextFilter key={f.field} field={f} value={value} onChange={set} hint={hint} />
+    );
+  };
 
   return (
     <Group gap="xs" align="flex-start" wrap="nowrap" style={GROW}>
-      {fields.map((f) => {
-        const value = search[f.field] ?? '';
-        const set = (v: string) => onChange({ ...search, [f.field]: v });
-        const hint = f === lastActive ? resultHint : undefined;
-        return isDropdown(f) ? (
-          <DropdownFilter key={f.field} field={f} value={value} onChange={set} hint={hint} />
-        ) : (
-          <TextFilter key={f.field} field={f} value={value} onChange={set} hint={hint} />
-        );
-      })}
+      {fields.map((f) => renderFilter(f, f === lastActive ? resultHint : undefined))}
+      {moreFields.length > 0 && (
+        <MoreFilters
+          fields={moreFields}
+          search={search}
+          onChange={onChange}
+          renderFilter={(f) => renderFilter(f, undefined, true)}
+          // With no quick filter in use, the result count would have nowhere to go; show it in the panel.
+          resultHint={lastActive ? undefined : resultHint}
+        />
+      )}
     </Group>
+  );
+}
+
+interface MoreFiltersProps {
+  fields: SearchField[];
+  search: QuickSearch;
+  onChange: (search: QuickSearch) => void;
+  renderFilter: (f: SearchField) => ReactNode;
+  resultHint?: string;
+}
+
+/**
+ * Square filter button with a box of the non-quick search fields right below it; a badge counts the active ones.
+ * Hovering shows the box; clicking the button (or anything in the box) keeps it open until you click outside.
+ */
+function MoreFilters({ fields, search, onChange, renderFilter, resultHint }: MoreFiltersProps) {
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const opened = hovered || pinned;
+  // Whether the box was already pinned when the current press started (the press itself pins it).
+  const wasPinned = useRef(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
+  const activeCount = fields.filter((f) => isActive(f, search[f.field])).length;
+  const clearAll = () => {
+    const next = { ...search };
+    for (const f of fields) delete next[f.field];
+    onChange(next);
+  };
+  const close = () => {
+    clearTimeout(hoverTimer.current);
+    setHovered(false);
+    setPinned(false);
+  };
+
+  // Close when clicking anywhere outside the button and its box (option menus render inside the box).
+  const ref = useClickOutside(close);
+
+  return (
+    <div
+      ref={ref}
+      className={classes.moreFilters}
+      onKeyDown={(e) => e.key === 'Escape' && close()}
+      onMouseEnter={() => {
+        clearTimeout(hoverTimer.current);
+        setHovered(true);
+      }}
+      // A short delay so moving from the button into the box doesn't flicker it shut.
+      onMouseLeave={() => {
+        hoverTimer.current = setTimeout(() => setHovered(false), 200);
+      }}
+      // Using anything in the box keeps it open after the mouse leaves.
+      onMouseDownCapture={() => {
+        wasPinned.current = pinned;
+        setPinned(true);
+      }}
+    >
+      <Indicator label={activeCount} size={18} disabled={activeCount === 0} color="indigo" offset={4}>
+        <ActionIcon
+          type="button"
+          size={42}
+          radius="md"
+          variant={activeCount > 0 || opened ? 'light' : 'default'}
+          color="indigo"
+          aria-label="More filters"
+          aria-expanded={opened}
+          title="More filters"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Clicking while it is pinned open closes it; otherwise it pins it open.
+            // Keyboard presses (detail 0) skip mousedown, so they toggle here.
+            if (e.detail === 0) setPinned((p) => !p);
+            else if (wasPinned.current) close();
+          }}
+        >
+          <IconFilter size={18} />
+        </ActionIcon>
+      </Indicator>
+      {opened && (
+        <Paper withBorder shadow="md" radius="md" p="sm" className={classes.moreFiltersBox}>
+          <Stack gap="sm">
+            <Group justify="space-between">
+              <Text fw={600} size="sm">
+                Filters
+              </Text>
+              {activeCount > 0 && (
+                <Button variant="subtle" size="compact-xs" onClick={clearAll}>
+                  Clear all
+                </Button>
+              )}
+            </Group>
+            {fields.map(renderFilter)}
+            {activeCount > 0 && resultHint && (
+              <Text size="xs" c="dimmed">
+                {resultHint}
+              </Text>
+            )}
+          </Stack>
+        </Paper>
+      )}
+    </div>
   );
 }
 
@@ -68,7 +200,7 @@ interface FilterProps {
   onChange: (value: string) => void;
 }
 
-function DropdownFilter({ field, value, onChange, hint }: FilterProps & { hint?: string }) {
+function DropdownFilter({ field, value, onChange, hint, inPopover }: FilterProps & { hint?: string; inPopover?: boolean }) {
   const { options, failed } = useSearchOptions(field);
   const [open, setOpen] = useState(false);
   return (
@@ -93,7 +225,8 @@ function DropdownFilter({ field, value, onChange, hint }: FilterProps & { hint?:
       searchable
       clearable
       nothingFoundMessage="No matches"
-      comboboxProps={DROPDOWN_PROPS}
+      // Inside the filter panel the menu must not portal out, or picking an option would close the panel.
+      comboboxProps={inPopover ? { ...DROPDOWN_PROPS, withinPortal: false } : DROPDOWN_PROPS}
       classNames={DROPDOWN_CLASSES}
       style={GROW}
     />

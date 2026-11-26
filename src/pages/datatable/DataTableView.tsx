@@ -1,6 +1,6 @@
 
 import { Button, Center, Group, Loader, Paper, SegmentedControl, Text } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   recordIdOf,
@@ -33,6 +33,8 @@ interface DataTableViewProps {
   blueprint: DataTableBlueprint;
   records: DataRecord[];
   quickSearchFields: SearchField[];
+  /** Non-quick search fields, shown in the filter button's panel. */
+  moreFilterFields: SearchField[];
   page: number;
   hasNext: boolean;
   pageLoading: boolean;
@@ -65,6 +67,7 @@ export default function DataTableView({
   blueprint,
   records,
   quickSearchFields,
+  moreFilterFields,
   page,
   hasNext,
   pageLoading,
@@ -144,8 +147,9 @@ export default function DataTableView({
     : undefined;
 
   // Any active filter is sent to the backend: {dataApi}?field=value&page=0&size=20.
-  const filters = useMemo(() => activeFilters(quickSearchFields, search), [quickSearchFields, search]);
-  const typing = quickSearchFields.some((f) => !isDropdown(f) && filters[f.field] !== undefined);
+  const searchFields = useMemo(() => [...quickSearchFields, ...moreFilterFields], [quickSearchFields, moreFilterFields]);
+  const filters = useMemo(() => activeFilters(searchFields, search), [searchFields, search]);
+  const typing = searchFields.some((f) => !isDropdown(f) && filters[f.field] !== undefined);
   // `records` changes after a save/delete refresh, which refetches the search too.
   const { results, loadMore } = useSearchResults(blueprint.dataApi, filters, typing, records);
 
@@ -163,15 +167,27 @@ export default function DataTableView({
 
   const modes = blueprint.availableDisplayModes ?? [];
   const showModeSwitch = !!blueprint.enableMultipleDisplayModes && modes.length > 1;
-  const showSearch = quickSearchFields.length > 0;
+  const showSearch = searchFields.length > 0;
+
+  // Only the results scroll (search and filters stay put); a new page starts at the top.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [page]);
 
   return (
-    <Paper withBorder radius="lg" p="lg">
+    <Paper
+      withBorder
+      radius="lg"
+      p="lg"
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+    >
       {(showSearch || showModeSwitch) && (
-        <Group justify="space-between" align="flex-start" mb="lg" gap="sm" wrap="nowrap">
+        <Group justify="space-between" align="flex-start" mb="lg" gap="sm" wrap="nowrap" style={{ flexShrink: 0 }}>
           {showSearch && (
             <QuickSearchBar
               fields={quickSearchFields}
+              moreFields={moreFilterFields}
               search={search}
               onChange={setSearch}
               resultHint={resultHint}
@@ -183,6 +199,8 @@ export default function DataTableView({
         </Group>
       )}
 
+      {/* Small padding (offset by the negative margin) so card shadows and hover lifts aren't clipped. */}
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: -6, padding: 6 }}>
       {results.status === 'error' ? (
         <Text c="red" ta="center" py="xl">
           {results.message}
@@ -254,6 +272,7 @@ export default function DataTableView({
           </Button>
         </Group>
       )}
+      </div>
     </Paper>
   );
 }

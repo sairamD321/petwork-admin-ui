@@ -62,6 +62,21 @@
   transform: rotate(180deg);
 }
 
+/* ---------- More filters: square button with a box of filters right below it ---------- */
+.moreFilters {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.moreFiltersBox {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+}
+
 /* ---------- Menu ---------- */
 .dropdown {
   padding: 5px;
