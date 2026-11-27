@@ -1,5 +1,5 @@
 import type { FormFieldDef } from '../../api/blueprint';
-import { ruleOf } from './formRules';
+import { isGroupField, ruleOf } from './formRules';
 
 export interface FormSection {
   key: string;
@@ -12,13 +12,13 @@ const SIDE_TYPES = new Set(['radioButton', 'dropDown', 'cascadeDropDown']);
 
 /**
  * Splits visible fields into page cards by field type, since the blueprint has no sections:
- * main = text/checkbox fields, then one card per repeatable group, then uploads; side = choices.
+ * main = text/checkbox fields, then one card per group (repeatable or not), then uploads; side = choices.
  */
 export function layoutSections(fields: FormFieldDef[]): { main: FormSection[]; side: FormSection[] } {
   const general = fields.filter(
-    (f) => !SIDE_TYPES.has(f.fieldType) && f.fieldType !== 'repeatableGroup' && f.fieldType !== 'fileUpload',
+    (f) => !SIDE_TYPES.has(f.fieldType) && !isGroupField(f) && f.fieldType !== 'fileUpload',
   );
-  const groups = fields.filter((f) => f.fieldType === 'repeatableGroup');
+  const groups = fields.filter(isGroupField);
   const media = fields.filter((f) => f.fieldType === 'fileUpload');
   const choices = fields.filter((f) => SIDE_TYPES.has(f.fieldType));
 

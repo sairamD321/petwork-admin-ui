@@ -12,6 +12,8 @@ interface RepeatableGroupFieldProps {
   disabled?: boolean;
   /** Omit the group title when the surrounding card already shows it. */
   hideLabel?: boolean;
+  /** `nonrepeatableGroup`: exactly one row, no numbering, remove or add buttons. */
+  single?: boolean;
   onChange: (items: GroupItem[]) => void;
 }
 
@@ -19,13 +21,14 @@ interface RepeatableGroupFieldProps {
 const fileNote = (f: FormFieldDef) =>
   ruleOf(f).multiple ? 'New files are added to the current images.' : 'A new file replaces the current image.';
 
-/** A list of child-field rows (e.g. sizes/variants) with add and remove. */
+/** A list of child-field rows (e.g. sizes/variants) with add and remove; or, with `single`, one fixed row. */
 export default function RepeatableGroupField({
   group,
   items,
   errors,
   disabled,
   hideLabel,
+  single,
   onChange,
 }: RepeatableGroupFieldProps) {
   const rule = ruleOf(group);
@@ -77,23 +80,26 @@ export default function RepeatableGroupField({
       {items.map((item, i) => {
         const current = rowImages(item);
         return (
-          <Paper key={i} withBorder p="sm" radius="md">
-            <Group justify="space-between" mb="xs">
-              <Text size="xs" c="dimmed">
-                #{i + 1}
-              </Text>
-              <Tooltip label="Remove">
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  aria-label="Remove"
-                  disabled={disabled || items.length <= min}
-                  onClick={() => onChange(items.filter((_, j) => j !== i))}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
+          // A single group sits straight in its card; repeatable rows each get a numbered box.
+          <Paper key={i} withBorder={!single} p={single ? 0 : 'sm'} radius="md">
+            {!single && (
+              <Group justify="space-between" mb="xs">
+                <Text size="xs" c="dimmed">
+                  #{i + 1}
+                </Text>
+                <Tooltip label="Remove">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Remove"
+                    disabled={disabled || items.length <= min}
+                    onClick={() => onChange(items.filter((_, j) => j !== i))}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            )}
 
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
               {fieldChildren.map((c) => childInput(item, i, c))}
@@ -132,17 +138,19 @@ export default function RepeatableGroupField({
         </Text>
       )}
 
-      <Group>
-        <Button
-          variant="light"
-          size="xs"
-          leftSection={<IconPlus size={14} />}
-          disabled={disabled || items.length >= max}
-          onClick={() => onChange([...items, newGroupItem(group)])}
-        >
-          {group.addButtonLabel || 'Add'}
-        </Button>
-      </Group>
+      {!single && (
+        <Group>
+          <Button
+            variant="light"
+            size="xs"
+            leftSection={<IconPlus size={14} />}
+            disabled={disabled || items.length >= max}
+            onClick={() => onChange([...items, newGroupItem(group)])}
+          >
+            {group.addButtonLabel || 'Add'}
+          </Button>
+        </Group>
+      )}
     </Stack>
   );
 }

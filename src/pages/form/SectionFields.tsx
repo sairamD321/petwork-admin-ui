@@ -3,7 +3,7 @@ import type { FormFieldDef } from '../../api/blueprint';
 import ExistingImages from './ExistingImages';
 import FormField from './FormField';
 import { isWideField } from './formLayout';
-import type { GroupItem } from './formRules';
+import { isGroupField, isSingleGroup, type GroupItem } from './formRules';
 import RepeatableGroupField from './RepeatableGroupField';
 import type { useBlueprintForm } from './useBlueprintForm';
 
@@ -27,13 +27,14 @@ export default function SectionFields({ fields, form, editing, narrow }: Section
 
         return (
           <Grid.Col key={`${f.field}-${i}`} span={span}>
-            {f.fieldType === 'repeatableGroup' ? (
+            {isGroupField(f) ? (
               <RepeatableGroupField
                 group={f}
                 items={(form.values[f.field] as GroupItem[]) ?? []}
                 errors={form.errors}
                 disabled={locked}
                 hideLabel
+                single={isSingleGroup(f)}
                 onChange={(items) => form.setValue(f.field, items)}
               />
             ) : (

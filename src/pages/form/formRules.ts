@@ -10,6 +10,16 @@ export type FormErrors = Record<string, string>;
 
 export const ruleOf = (f: FormFieldDef): FieldRule => f.rules?.[0] ?? {};
 
+/**
+ * Group fields hold child fields. `repeatableGroup` is a list of rows (e.g. variants);
+ * `nonrepeatableGroup` is exactly one row, sent to the backend as a single object.
+ * Internally both are a `GroupItem[]` (the single group always has one item), so they share
+ * rendering, validation and image handling.
+ */
+export const isGroupField = (f: FormFieldDef) =>
+  f.fieldType === 'repeatableGroup' || f.fieldType === 'nonrepeatableGroup';
+export const isSingleGroup = (f: FormFieldDef) => f.fieldType === 'nonrepeatableGroup';
+
 // --- Visibility ---
 
 /** Only `field.x == 'v'` / `field.x != 'v'` clauses joined by && and || are understood. */
@@ -54,6 +64,7 @@ export function newGroupItem(group: FormFieldDef): GroupItem {
 
 export function defaultValue(f: FormFieldDef): FieldValue {
   if (isFileField(f)) return fileDefault(f);
+  if (isSingleGroup(f)) return [newGroupItem(f)];
   if (f.fieldType === 'repeatableGroup') {
     return Array.from({ length: Number(ruleOf(f).minItems) || 0 }, () => newGroupItem(f));
   }
@@ -190,7 +201,7 @@ function withoutFiles(group: FormFieldDef, item: GroupItem): Record<string, unkn
 function allRemovedImages(fields: FormFieldDef[], values: FormValues): string[] {
   return fields.flatMap((f) => {
     const v = values[f.field];
-    return f.fieldType === 'repeatableGroup' && isGroupList(v) ? v.flatMap(removedImages) : [];
+    return isGroupField(f) && isGroupList(v) ? v.flatMap(removedImages) : [];
   });
 }
 
@@ -202,7 +213,7 @@ export function existingImages(fields: FormFieldDef[], record: DataRecord | unde
   if (!record) return {};
   const fileFields = fields.filter((f) => f.fieldType === 'fileUpload');
   if (!fileFields.length) return {};
-  const groupFields = new Set(fields.filter((f) => f.fieldType === 'repeatableGroup').map((f) => f.field));
+  const groupFields = new Set(fields.filter(isGroupField).map((f) => f.field));
   const out: Record<string, ImageRef[]> = {};
   const claimed = new Set<string>();
   for (const f of fileFields) {
@@ -244,6 +255,14 @@ function groupItemFrom(f: FormFieldDef, source: Record<string, unknown>): GroupI
 
 function fromRecord(f: FormFieldDef, record: DataRecord): FieldValue | undefined {
   if (f.fieldType === 'fileUpload') return undefined; // files can't be prefilled
+  if (isSingleGroup(f)) {
+    // Full details carry the group as one object (e.g. `dimensions: {...}`); a list's first row is accepted too.
+    const own = record[f.field];
+    const source = isPlainObject(own) ? own : Array.isArray(own) ? own.find(isPlainObject) : undefined;
+    if (source) return [groupItemFrom(f, source)];
+    if (!(f.childFields ?? []).some((c) => record[c.field] != null)) return undefined;
+    return [groupItemFrom(f, record)];
+  }
   if (f.fieldType === 'repeatableGroup') {
     // Full details carry the group as a list (e.g. `variants: [...]`); a list row may only have flat fields.
     const list = record[f.field];
@@ -349,7 +368,7 @@ export function validate(fields: FormFieldDef[], values: FormValues): FormErrors
     const value = values[f.field];
     const r = ruleOf(f);
     let msg: string | null = null;
-    if (f.fieldType === 'repeatableGroup') checkGroup(f, (value as GroupItem[]) ?? [], errors);
+    if (isGroupField(f)) checkGroup(f, (value as GroupItem[]) ?? [], errors);
     else if (f.fieldType === 'fileUpload') msg = checkFiles(f.displayName, value, r);
     else if (f.fieldType === 'checkBox') msg = r.mandatory && value !== true ? `${f.displayName} is required` : null;
     else msg = checkText(f.displayName, String(value ?? ''), r, values);
@@ -376,12 +395,19 @@ export function usesMultipart(fields: FormFieldDef[]): boolean {
 }
 
 const groupOf = (fields: FormFieldDef[], name: string) =>
-  fields.find((f) => f.field === name && f.fieldType === 'repeatableGroup');
+  fields.find((f) => f.field === name && isGroupField(f));
+
+/** A group's JSON value: a list of rows, or one object for a `nonrepeatableGroup`. */
+function groupJson(group: FormFieldDef, items: GroupItem[]): unknown {
+  const rows = items.map((item) => withoutFiles(group, item));
+  return isSingleGroup(group) ? (rows[0] ?? {}) : rows;
+}
 
 /**
  * Multipart body with every form field: files as parts, groups as JSON, checkboxes as "true"/"false",
  * text trimmed (empty text is sent as ""). Files picked in a group row go as `group[i][field]`
- * (e.g. `variants[0][mainImage]`, `variants[0][subImages]` repeated per file).
+ * (e.g. `variants[0][mainImage]`, `variants[0][subImages]` repeated per file);
+ * files in a `nonrepeatableGroup` go as `group[field]`.
  */
 export function toFormData(fields: FormFieldDef[], values: FormValues): FormData {
   const data = new FormData();
@@ -392,13 +418,14 @@ export function toFormData(fields: FormFieldDef[], values: FormValues): FormData
     else if (Array.isArray(v)) {
       const group = groupOf(fields, name);
       if (!group || !isGroupList(v)) continue;
-      data.append(name, JSON.stringify(v.map((item) => withoutFiles(group, item))));
+      data.append(name, JSON.stringify(groupJson(group, v)));
       v.forEach((item, i) => {
         for (const c of group.childFields ?? []) {
           if (!isFileField(c)) continue;
           const picked = item[c.field];
           const files = picked instanceof File ? [picked] : Array.isArray(picked) ? picked : [];
-          files.forEach((file) => data.append(`${name}[${i}][${c.field}]`, file));
+          const key = isSingleGroup(group) ? `${name}[${c.field}]` : `${name}[${i}][${c.field}]`;
+          files.forEach((file) => data.append(key, file));
         }
       });
     } else if (typeof v === 'boolean') data.append(name, String(v));
@@ -417,7 +444,7 @@ export function toJson(fields: FormFieldDef[], values: FormValues): Record<strin
     const v = values[name] ?? null;
     const group = groupOf(fields, name);
     body[name] =
-      typeof v === 'string' ? v.trim() : group && isGroupList(v) ? v.map((item) => withoutFiles(group, item)) : v;
+      typeof v === 'string' ? v.trim() : group && isGroupList(v) ? groupJson(group, v) : v;
   }
   const removed = allRemovedImages(fields, values);
   if (removed.length) body.removeImages = removed;
