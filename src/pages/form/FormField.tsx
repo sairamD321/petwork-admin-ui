@@ -1,5 +1,5 @@
 import { Checkbox, FileInput, Select, TextInput } from '@mantine/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormFieldDef } from '../../api/blueprint';
 import { fetchOptions } from '../../api/records';
 import { ruleOf, type FieldValue } from './formRules';
@@ -36,20 +36,34 @@ const alignedInputStyles = {
   wrapper: { marginTop: 'auto' },
 } as const;
 
+type Option = { value: string; label: string };
+
+/** Rows (from `api` or `staticDropDownValues`) as options: `dropdownCode` is the value, `dropdownValue` the label. */
+function toOptions(rows: Record<string, unknown>[], code: string, name: string): Option[] {
+  return rows
+    .filter((r) => r[code] !== undefined && r[code] !== null)
+    .map((r) => ({ value: String(r[code]), label: String(r[name] ?? r[code]) }));
+}
+
+/** Options come from the field's `api` when it is set, else from its `staticDropDownValues`. */
 function DropdownField({ field, value, error, disabled, onChange }: FormFieldProps) {
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
+  const [remoteOptions, setRemoteOptions] = useState<Option[]>([]);
   const [failed, setFailed] = useState(false);
   const code = field.dropdownCode ?? 'code';
   const name = field.dropdownValue ?? 'name';
+  const api = field.api?.trim();
+  const staticOptions = useMemo(
+    () => toOptions(field.staticDropDownValues ?? [], code, name),
+    [field.staticDropDownValues, code, name],
+  );
+  const options = api ? remoteOptions : staticOptions;
 
   useEffect(() => {
-    if (!field.api) return;
+    if (!api) return;
     let cancelled = false;
-    fetchOptions(field.api)
+    fetchOptions(api)
       .then((rows) => {
-        if (!cancelled) {
-          setOptions(rows.map((r) => ({ value: String(r[code]), label: String(r[name] ?? r[code]) })));
-        }
+        if (!cancelled) setRemoteOptions(toOptions(rows, code, name));
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -57,7 +71,7 @@ function DropdownField({ field, value, error, disabled, onChange }: FormFieldPro
     return () => {
       cancelled = true;
     };
-  }, [field.api, code, name]);
+  }, [api, code, name]);
 
   return (
     <Select

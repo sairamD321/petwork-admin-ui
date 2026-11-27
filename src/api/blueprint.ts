@@ -90,8 +90,10 @@ export interface FormFieldDef {
   toolTip?: string;
   placeholder?: string;
   editable?: boolean;
-  /** Options endpoint for dropdowns. */
+  /** Options endpoint for dropdowns; `staticDropDownValues` is used when empty. */
   api?: string;
+  /** Fixed dropdown options, read with `dropdownCode` / `dropdownValue` like rows from `api`. */
+  staticDropDownValues?: Record<string, string>[];
   values?: { radioValue: string }[];
   /** e.g. ` field.petType =='Cat' && field.productType == 'Food'` */
   visibilityCriteria?: string;
@@ -109,7 +111,7 @@ export interface EditFormBlueprint {
   /** Heading shown at the top of the form. */
   displayName?: string;
   editForm: FormFieldDef[];
-  /** Save target: POST for new records, PUT for edited ones. */
+  /** Save target: POST for new records, PATCH for edited ones. */
   createApi?: string;
   /** GET target for prefilling an existing record, contains `{recordId}`. Never written to. */
   dataApi?: string;
