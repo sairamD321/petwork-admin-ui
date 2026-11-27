@@ -95,7 +95,7 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    const { createApi, dataApi, mappings } = load.blueprint;
+    const { createApi, mappings } = load.blueprint;
     const recordId = details ? (recordIdOf(mappings, details) ?? fallbackRecordId) : undefined;
     setSaving(true);
     setSaveError(null);
@@ -106,8 +106,9 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
         if (!createApi) throw new Error('This form has no create API in its blueprint.');
         await createRecord(createApi, body);
       } else {
-        if (!dataApi || !recordId) throw new Error('This form has no update API for this record.');
-        await updateRecord(dataApi, recordId, body);
+        // Edits are saved with a PATCH to the same `createApi`; `dataApi` is only used to prefill the form.
+        if (!createApi) throw new Error('This form has no create API in its blueprint.');
+        await updateRecord(createApi, recordId, body);
       }
       onSaved();
     } catch (err) {

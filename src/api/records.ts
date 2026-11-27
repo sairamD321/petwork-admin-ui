@@ -117,9 +117,13 @@ export async function fetchVariantDetails(dataApi: string, variantId: string): P
   return unwrapRecord(await apiRequest<unknown>(resolveApiPath(path)));
 }
 
-/** PATCH changes to a record through a form blueprint's `dataApi` (the backend's update routes are PATCH). */
-export function updateRecord(dataApi: string, recordId: string, body: Record<string, unknown> | FormData) {
-  return apiRequest<unknown>(resolveRecordPath(dataApi, recordId), { method: 'PATCH', body });
+/**
+ * PATCH an edited record to the form blueprint's `createApi` (the `dataApi` is only read, for prefilling).
+ * A `{recordId}` in the `createApi`, if there is one, is filled in.
+ */
+export function updateRecord(createApi: string, recordId: string | undefined, body: Record<string, unknown> | FormData) {
+  const path = recordId ? resolveRecordPath(createApi, recordId) : resolveApiPath(createApi);
+  return apiRequest<unknown>(path, { method: 'PATCH', body });
 }
 
 /**

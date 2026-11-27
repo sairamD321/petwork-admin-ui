@@ -109,9 +109,9 @@ export interface EditFormBlueprint {
   /** Heading shown at the top of the form. */
   displayName?: string;
   editForm: FormFieldDef[];
-  /** POST target for new records (multipart). */
+  /** Save target: POST for new records, PUT for edited ones. */
   createApi?: string;
-  /** GET (prefill) and PATCH (save) target for existing records, contains `{recordId}`. */
+  /** GET target for prefilling an existing record, contains `{recordId}`. Never written to. */
   dataApi?: string;
   refreshOnSave?: boolean;
   resetButton?: boolean;
