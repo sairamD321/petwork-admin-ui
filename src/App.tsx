@@ -8,7 +8,8 @@ import {
   Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconLogout, IconPaw } from '@tabler/icons-react';
+import { IconLogout } from '@tabler/icons-react';
+import logoUrl from './assets/petwork-logo.png';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchMenu, type MenuItem } from './api/menu';
 import { clearSession, getSession, onUnauthorized, saveSession } from './api/session';
@@ -164,7 +165,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <IconPaw size={24} />
+            <img src={logoUrl} alt="PetWork" width={32} height={32} style={{ borderRadius: 8, display: 'block' }} />
             <Title order={4}>PetWork Admin</Title>
           </Group>
           <Group gap="xs">

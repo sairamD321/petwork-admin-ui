@@ -24,6 +24,36 @@
 }
 
 /* ---------- Gallery ---------- */
+.gallery {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* The main picture takes all the width the thumbnails leave. */
+.mainFrame {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Thumbnail column: as tall as the main picture, scrolling if there are more than fit. */
+.thumbRail {
+  position: relative;
+  flex-shrink: 0;
+  width: 84px;
+}
+
+.thumbList {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
 .stage {
   position: relative;
   aspect-ratio: 1;
@@ -71,6 +101,7 @@
 }
 
 .thumb {
+  flex-shrink: 0;
   width: 76px;
   height: 76px;
   padding: 6px;

@@ -146,7 +146,7 @@ export default function DataTableView({
       )
     : undefined;
 
-  // Any active filter is sent to the backend: {dataApi}?field=value&page=0&size=20.
+  // Any active filter is sent to the backend: {dataApi}?field=value&page=0&size=24.
   const searchFields = useMemo(() => [...quickSearchFields, ...moreFilterFields], [quickSearchFields, moreFilterFields]);
   const filters = useMemo(() => activeFilters(searchFields, search), [searchFields, search]);
   const typing = searchFields.some((f) => !isDropdown(f) && filters[f.field] !== undefined);
