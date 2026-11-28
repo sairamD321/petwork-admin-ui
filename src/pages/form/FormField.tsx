@@ -1,8 +1,9 @@
-import { Checkbox, FileInput, Select, TextInput } from '@mantine/core';
+import { Checkbox, Select, TextInput } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormFieldDef } from '../../api/blueprint';
 import { fetchOptions } from '../../api/records';
 import { ruleOf, type FieldValue } from './formRules';
+import FileUploadField from './FileUploadField';
 import SlidingRadio from './SlidingRadio';
 
 export interface FormFieldProps {
@@ -122,21 +123,19 @@ export default function FormField(props: FormFieldProps) {
         ?.split(',')
         .map((e) => `.${e.trim()}`)
         .join(',');
-      const common = { ...labelProps(field, error, note), accept, clearable: true, disabled };
-      return rule.multiple ? (
-        <FileInput
-          {...common}
-          multiple
-          placeholder="Choose files"
-          value={Array.isArray(value) ? (value as File[]) : []}
-          onChange={(files) => onChange(files)}
-        />
-      ) : (
-        <FileInput
-          {...common}
-          placeholder="Choose a file"
-          value={value instanceof File ? value : null}
-          onChange={(file) => onChange(file)}
+      const { label, description, withAsterisk } = labelProps(field, error, note);
+      // Picked files show as thumbnails; with `multiple`, each pick adds one more (e.g. sub images one by one).
+      return (
+        <FileUploadField
+          label={label}
+          description={description}
+          error={error}
+          required={withAsterisk}
+          accept={accept}
+          multiple={!!rule.multiple}
+          disabled={disabled}
+          value={rule.multiple ? (Array.isArray(value) ? (value as File[]) : []) : value instanceof File ? value : null}
+          onChange={onChange}
         />
       );
     }

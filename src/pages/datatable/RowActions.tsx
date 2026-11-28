@@ -6,7 +6,7 @@ import CartStepper from './CartStepper';
 
 /** The record's cart line, for "Add to Cart" actions. */
 export interface CartState {
-  variantId: string | undefined;
+  cartKey: string | undefined;
   quantity: number;
   onQuantityChange: (quantity: number) => void;
 }
@@ -32,7 +32,7 @@ export default function RowActions({ actions, onAction, variant = 'icons', cart 
     <CartStepper
       key={a.action}
       action={a}
-      variantId={cart!.variantId}
+      cartKey={cart!.cartKey}
       quantity={cart!.quantity}
       onQuantityChange={cart!.onQuantityChange}
     />

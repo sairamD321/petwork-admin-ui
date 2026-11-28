@@ -26,8 +26,8 @@ export function summarizeCart(cart: CartController, titles?: Record<string, stri
   const saved = cart.load.status === 'ready' ? cart.load.cart : null;
   const lines = (saved?.items ?? [])
     .map((item) => ({
-      item: titles?.[item.variantId] ? { ...item, name: titles[item.variantId] } : item,
-      quantity: cart.quantities[item.variantId] ?? item.quantity,
+      item: titles?.[item.key] ? { ...item, name: titles[item.key] } : item,
+      quantity: cart.quantities[item.key] ?? item.quantity,
     }))
     .filter((l) => l.quantity > 0);
   const unitCount = lines.reduce((n, l) => n + l.quantity, 0);

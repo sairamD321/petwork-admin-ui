@@ -273,6 +273,65 @@ function fromRecord(f: FormFieldDef, record: DataRecord): FieldValue | undefined
   return simpleFromRecord(f, record[f.field]);
 }
 
+// --- Prefill from a form's `dataApi` (forms opened without a record) ---
+
+/** Every list of objects in a response (up to a few levels deep), with the key it sits under. */
+function objectLists(node: unknown, key = '', depth = 0, out: { key: string; rows: Record<string, unknown>[] }[] = []) {
+  if (depth > 5 || !node || typeof node !== 'object') return out;
+  if (Array.isArray(node)) {
+    const rows = node.filter(isPlainObject);
+    if (rows.length) out.push({ key, rows });
+    rows.forEach((r) => objectLists(r, key, depth + 1, out));
+    return out;
+  }
+  for (const [k, v] of Object.entries(node)) objectLists(v, k, depth + 1, out);
+  return out;
+}
+
+/** A row with its nested objects' values lifted up (e.g. `variant.upc` -> `upc`); the row's own values win. */
+function flattenRow(row: Record<string, unknown>): Record<string, unknown> {
+  const lifted: Record<string, unknown> = {};
+  for (const v of Object.values(row)) {
+    if (isPlainObject(v)) Object.assign(lifted, Object.fromEntries(Object.entries(v).filter(([, x]) => !isPlainObject(x))));
+  }
+  return { ...lifted, ...row };
+}
+
+/**
+ * Turns a `dataApi` response into a record for `initialValues`, whatever its shape:
+ * - top-level fields come from the object (the body, `data`, `record`, or a single `records[0]`)
+ *   that has the most of the form's field names;
+ * - each group field (e.g. the transfer's items) takes the list stored under its own name, else the
+ *   list whose rows share the most child field names with it, else the only list in the response.
+ */
+export function prefillRecord(fields: FormFieldDef[], body: unknown): DataRecord {
+  if (!body || typeof body !== 'object') return {};
+  const names = fields.map((f) => f.field);
+  const b = body as Record<string, unknown>;
+  const candidates = [
+    Array.isArray(body) ? undefined : b,
+    b.data,
+    b.record,
+    Array.isArray(b.records) && b.records.length === 1 ? b.records[0] : undefined,
+  ].filter(isPlainObject);
+  const score = (o: Record<string, unknown>) => names.filter((n) => n in o).length;
+  const base: DataRecord = { ...(candidates.sort((x, y) => score(y) - score(x))[0] ?? {}) } as DataRecord;
+
+  const lists = objectLists(body);
+  for (const g of fields.filter(isGroupField)) {
+    if (Array.isArray(base[g.field]) || (isSingleGroup(g) && isPlainObject(base[g.field]))) continue;
+    const children = (g.childFields ?? []).map((c) => c.field);
+    const overlap = (rows: Record<string, unknown>[]) =>
+      rows.reduce((n, r) => n + children.filter((c) => c in flattenRow(r)).length, 0);
+    const best =
+      lists.find((l) => l.key === g.field) ??
+      [...lists].sort((x, y) => overlap(y.rows) - overlap(x.rows)).find((l) => overlap(l.rows) > 0) ??
+      (lists.length === 1 ? lists[0] : undefined);
+    if (best) base[g.field] = best.rows.map(flattenRow) as unknown as DataRecord[string];
+  }
+  return base;
+}
+
 /** One value per field name; when editing, record values matching a field name are prefilled. */
 export function initialValues(fields: FormFieldDef[], record?: DataRecord): FormValues {
   const values: FormValues = {};

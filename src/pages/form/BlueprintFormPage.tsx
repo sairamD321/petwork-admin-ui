@@ -100,6 +100,12 @@ export default function BlueprintFormPage(props: BlueprintFormPageProps) {
           </Grid>
         )}
 
+        {form.prefillError && (
+          <Alert color="yellow" icon={<IconAlertCircle size={18} />} title="Couldn't load the form's data">
+            {form.prefillError} The form opened empty; you can still fill it in.
+          </Alert>
+        )}
+
         {form.saveError && (
           <Alert color="red" icon={<IconAlertCircle size={18} />} title="Couldn't save">
             {form.saveError}

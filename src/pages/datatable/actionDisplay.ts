@@ -54,5 +54,5 @@ export const isEditAction = (a: BlueprintAction) =>
   actionLabel(a).trim().toLowerCase() === 'edit' ||
   actionIcon(a) === IconPencil;
 
-/** "View" row actions GET `dataApi` (with `{variantId}` filled in) and show the product page. */
+/** "View" row actions GET `dataApi` (with `{variantId}` or `{upc}` filled in) and show the product page. */
 export const isViewAction = (a: BlueprintAction) => a.action.trim().toLowerCase() === 'view' && !!a.dataApi;

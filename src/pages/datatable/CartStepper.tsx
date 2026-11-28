@@ -8,7 +8,7 @@ import classes from './CartStepper.module.css';
 
 interface CartStepperProps {
   action: BlueprintAction;
-  variantId: string | undefined;
+  cartKey: string | undefined;
   /** Quantity already in the cart (kept by the list, so it survives re-renders and searches). */
   quantity: number;
   onQuantityChange: (quantity: number) => void;
@@ -21,12 +21,12 @@ interface CartStepperProps {
 }
 
 /**
- * "Add to Cart", then a − qty + stepper. Every change POSTs `{ variantId, quantity }` (the new total)
+ * "Add to Cart", then a − qty + stepper. Every change POSTs `{ variantId, quantity }` or `{ upc, quantity }` (the new total)
  * to the action's `createApi`; the shown quantity only changes once the backend accepts it.
  */
 export default function CartStepper({
   action,
-  variantId,
+  cartKey,
   quantity,
   onQuantityChange,
   fullWidth,
@@ -39,13 +39,13 @@ export default function CartStepper({
   const [error, setError] = useState<string | null>(null);
 
   async function send(next: number) {
-    if (!action.createApi || !variantId || sending) return;
+    if (!action.createApi || !cartKey || sending) return;
     setSending(true);
     setError(null);
     try {
       // Down to zero removes the line; any other change POSTs the new total.
-      if (next <= 0) await removeFromCart(action.createApi, variantId);
-      else await setCartQuantity(action.createApi, variantId, next);
+      if (next <= 0) await removeFromCart(action.createApi, cartKey);
+      else await setCartQuantity(action.createApi, cartKey, next);
       onQuantityChange(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update the cart.');
@@ -63,7 +63,7 @@ export default function CartStepper({
       <UnstyledButton
         className={classes.add}
         data-sending={sending || undefined}
-        disabled={!variantId || sending}
+        disabled={!cartKey || sending}
         onClick={() => void send(1)}
       >
         <span className={classes.addIcon}>
@@ -106,7 +106,7 @@ export default function CartStepper({
         fullWidth={fullWidth}
         leftSection={<IconShoppingCartPlus size={large ? 18 : 13} />}
         loading={sending}
-        disabled={!variantId}
+        disabled={!cartKey}
         onClick={() => void send(1)}
       >
         {actionLabel(action)}
@@ -152,7 +152,7 @@ export default function CartStepper({
 
   return (
     <div onClick={stop} onKeyDown={stop} style={{ width: fullWidth ? '100%' : undefined }}>
-      <Tooltip label={error ?? 'This product has no variant to add'} disabled={!error && !!variantId} withArrow color={error ? 'red' : undefined}>
+      <Tooltip label={error ?? 'This product has no variant to add'} disabled={!error && !!cartKey} withArrow color={error ? 'red' : undefined}>
         <div>{control}</div>
       </Tooltip>
       {error && (

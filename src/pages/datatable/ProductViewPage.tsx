@@ -36,9 +36,9 @@ import ZoomImage from './ZoomImage';
 import type { CartController } from './useCart';
 
 interface ProductViewPageProps {
-  /** The "view" row action; its `dataApi` takes `{variantId}`. */
+  /** The "view" row action; its `dataApi` takes `{variantId}` or `{upc}`, filled from `cartKey`. */
   action: BlueprintAction;
-  variantId: string;
+  cartKey: string;
   title: string;
   subtitle?: string;
   cart: CartController;
@@ -59,7 +59,7 @@ const WHY_US = [
 ];
 
 /** Product page for one variant: gallery, unit picker, price with Add to Cart, and details. */
-export default function ProductViewPage({ action, variantId, title, subtitle, cart, onBack, headerRight }: ProductViewPageProps) {
+export default function ProductViewPage({ action, cartKey, title, subtitle, cart, onBack, headerRight }: ProductViewPageProps) {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState(0);
@@ -67,10 +67,10 @@ export default function ProductViewPage({ action, variantId, title, subtitle, ca
 
   useEffect(() => {
     let cancelled = false;
-    fetchVariantDetails(action.dataApi ?? '', variantId)
+    fetchVariantDetails(action.dataApi ?? '', cartKey)
       .then((record) => {
         if (cancelled) return;
-        const view = toProductView(record, variantId);
+        const view = toProductView(record, cartKey);
         setSelected(view.initialIndex);
         setImageIndex(0);
         setLoad({ status: 'ready', view });
@@ -81,7 +81,7 @@ export default function ProductViewPage({ action, variantId, title, subtitle, ca
     return () => {
       cancelled = true;
     };
-  }, [action.dataApi, variantId, attempt]);
+  }, [action.dataApi, cartKey, attempt]);
 
   const retry = () => {
     setLoad({ status: 'loading' });
@@ -309,7 +309,7 @@ function ProductBody({ view, selected, onSelect, imageIndex, onImage, cart }: {
                 <Box>
                   <CartStepper
                     action={cart.addAction}
-                    variantId={variant?.id}
+                    cartKey={variant?.id}
                     quantity={quantity}
                     onQuantityChange={(q) => variant?.id && cart.setQuantity(variant.id, q)}
                     tone="solid"

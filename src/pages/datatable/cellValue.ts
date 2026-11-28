@@ -1,3 +1,5 @@
+import { LEGACY_ID_NAMES, toCartKey, UPC_NAMES, VARIANT_ID_NAMES } from '../../api/cartKey';
+
 const IMAGE_URL = /^https?:\/\/\S+\.(png|jpe?g|webp|gif|svg|avif)(\?\S*)?$/i;
 
 export function isImageUrl(value: unknown): value is string {
@@ -160,21 +162,34 @@ export function cardOfferOf(record: Record<string, unknown>): {
   };
 }
 
+const scalarText = (v: unknown) => (v === undefined || typeof v === 'object' ? undefined : String(v));
+
 /**
- * The variant id a cart line is for: the product's default variant (else its first one), or the record
+ * A variant's cart key (see `api/cartKey.ts`): its variant id when it has one, else its UPC
+ * (new backend), else a generic id from older rows.
+ */
+export function variantCartKeyOf(variant: Record<string, unknown>): string | undefined {
+  const variantId = scalarText(cardNestedValue(variant, VARIANT_ID_NAMES));
+  if (variantId) return toCartKey('variantId', variantId);
+  const upc = scalarText(cardNestedValue(variant, UPC_NAMES));
+  if (upc) return toCartKey('upc', upc);
+  const id = scalarText(cardNestedValue(variant, LEGACY_ID_NAMES));
+  return id ? toCartKey('variantId', id) : undefined;
+}
+
+/**
+ * The cart key a product's cart line is for: its default variant (else its first one), or the record
  * itself when it has no `variants` (a row that already is a variant).
  */
-export function cartVariantIdOf(record: Record<string, unknown>): string | undefined {
+export function cartKeyOf(record: Record<string, unknown>): string | undefined {
   const variants = Array.isArray(record.variants)
     ? record.variants.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
     : [];
-  const source = variants.find((v) => v.isDefault === true) ?? variants[0] ?? record;
-  const id = cardNestedValue(source, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
-  return id === undefined || typeof id === 'object' ? undefined : String(id);
+  return variantCartKeyOf(variants.find((v) => v.isDefault === true) ?? variants[0] ?? record);
 }
 
-/** Variant id -> its main image, from the products on screen (the cart panel's fallback picture). */
-export function variantImagesById(records: Record<string, unknown>[]): Record<string, string> {
+/** Cart key -> the variant's main image, from the products on screen (the cart panel's fallback picture). */
+export function cartImagesByKey(records: Record<string, unknown>[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const record of records) {
     const variants = Array.isArray(record.variants) ? record.variants : [record];
@@ -182,17 +197,17 @@ export function variantImagesById(records: Record<string, unknown>[]): Record<st
     for (const v of variants) {
       if (!v || typeof v !== 'object') continue;
       const variant = v as Record<string, unknown>;
-      const id = cardNestedValue(variant, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
-      if (id === undefined || typeof id === 'object') continue;
+      const key = variantCartKeyOf(variant);
+      if (!key) continue;
       const image = typeof variant.mainImage === 'string' && variant.mainImage ? variant.mainImage : fallback;
-      if (image) out[String(id)] = image;
+      if (image) out[key] = image;
     }
   }
   return out;
 }
 
-/** Variant id -> the product card's title (brand + name + flavour + ...), so the cart and invoice match the cards. */
-export function variantTitlesById(records: Record<string, unknown>[]): Record<string, string> {
+/** Cart key -> the product card's title (brand + name + flavour + ...), so the cart and invoice match the cards. */
+export function cartTitlesByKey(records: Record<string, unknown>[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const record of records) {
     const title = productCardTitleOf(record);
@@ -200,9 +215,8 @@ export function variantTitlesById(records: Record<string, unknown>[]): Record<st
     const variants = Array.isArray(record.variants) ? record.variants : [record];
     for (const v of variants) {
       if (!v || typeof v !== 'object') continue;
-      const id = cardNestedValue(v as Record<string, unknown>, ['variantId', 'varientId', 'variant_id', 'id', '_id', 'variantCode']);
-      if (id === undefined || typeof id === 'object') continue;
-      out[String(id)] = title;
+      const key = variantCartKeyOf(v as Record<string, unknown>);
+      if (key) out[key] = title;
     }
   }
   return out;

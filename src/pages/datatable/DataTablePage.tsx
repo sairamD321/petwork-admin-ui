@@ -6,7 +6,7 @@ import { deleteRecord, type DataRecord } from '../../api/records';
 import { actionIcon, actionLabel, isCartNamed, isDeleteAction, isEditAction, isViewAction } from './actionDisplay';
 import CartDrawer from './CartDrawer';
 import titleClasses from './PageTitle.module.css';
-import { cartVariantIdOf, variantImagesById, variantTitlesById } from './cellValue';
+import { cartKeyOf, cartImagesByKey, cartTitlesByKey } from './cellValue';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import DataTableView from './DataTableView';
 import { useCart } from './useCart';
@@ -34,7 +34,7 @@ interface OpenForm {
 /** The product page opened by a "view" action. */
 interface OpenView {
   action: BlueprintAction;
-  variantId: string;
+  cartKey: string;
 }
 
 interface PendingDelete {
@@ -90,8 +90,8 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
     cart.addAction ?? (cartHeaderAction ? { ...cartHeaderAction, createApi: cartHeaderAction.dataApi } : undefined);
   // Pictures for cart lines whose cart data has none: the matching variant's image from the loaded products.
   const loadedRecords = state.status === 'ready' ? state.records : undefined;
-  const cartFallbackImages = useMemo(() => variantImagesById(loadedRecords ?? []), [loadedRecords]);
-  const cartProductTitles = useMemo(() => variantTitlesById(loadedRecords ?? []), [loadedRecords]);
+  const cartFallbackImages = useMemo(() => cartImagesByKey(loadedRecords ?? []), [loadedRecords]);
+  const cartProductTitles = useMemo(() => cartTitlesByKey(loadedRecords ?? []), [loadedRecords]);
   const cartUnits = Object.values(cart.quantities).reduce((n, q) => n + (q > 0 ? q : 0), 0);
 
   // The form is a page of its own: opening it adds a history entry, so the browser's
@@ -133,8 +133,8 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
   function onRowAction(a: BlueprintAction, record: DataRecord, name: string) {
     const recordId = recordIdOf(blueprint?.mappings, record);
     if (isViewAction(a)) {
-      const variantId = cartVariantIdOf(record);
-      if (variantId) openView({ action: a, variantId });
+      const cartKey = cartKeyOf(record);
+      if (cartKey) openView({ action: a, cartKey });
     } else if (isDeleteAction(a) && recordId) {
       setDeleteError(null);
       setPendingDelete({ action: a, recordId, name: name || recordId });
@@ -181,7 +181,7 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
       <Suspense fallback={null}>
         <ProductViewPage
           action={view.action}
-          variantId={view.variantId}
+          cartKey={view.cartKey}
           title={actionLabel(view.action)}
           subtitle={title}
           cart={cart}
@@ -206,6 +206,8 @@ export default function DataTablePage({ title, tableBlueprintUrl, searchBlueprin
           onSaved={() => {
             closeForm();
             refresh();
+            // e.g. a saved transfer empties the transfer cart: show the cart as the backend now has it.
+            if (cart.load.status !== 'idle') cart.reload();
           }}
         />
       </Suspense>

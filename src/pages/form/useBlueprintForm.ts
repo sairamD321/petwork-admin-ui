@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchEditFormBlueprint, recordIdOf, type EditFormBlueprint } from '../../api/blueprint';
-import { createRecord, fetchRecord, updateRecord, type DataRecord } from '../../api/records';
+import { createRecord, fetchFormData, fetchRecord, updateRecord, type DataRecord } from '../../api/records';
 import {
   defaultValue,
   dependsOn,
   existingImages,
   initialValues,
+  prefillRecord,
   toFormData,
   toJson,
   usesMultipart,
@@ -31,6 +32,9 @@ type LoadState =
 
 const message = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
+/** A `dataApi` with a placeholder other than `{version}` (e.g. `{recordId}`) needs a record to call. */
+const needsRecord = (api: string) => /\{(?!version\})[^}]+\}/i.test(api);
+
 /** Loads a form blueprint and owns its values, validation and save. */
 export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSaved }: Options) {
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -38,6 +42,7 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
 
   // When editing: the row from the table, overlaid with the full details from the form's `dataApi`.
   const [details, setDetails] = useState<DataRecord | undefined>(record);
@@ -53,6 +58,15 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
           full = await fetchRecord(blueprint.dataApi, recordId)
             .then((fetched) => ({ ...record, ...fetched }))
             .catch(() => record);
+        } else if (!record && blueprint.dataApi && !needsRecord(blueprint.dataApi)) {
+          // Opened without a record (e.g. the "Transfer" header button): GET {dataApi} and prefill from it,
+          // e.g. the transfer cart's items into the form's items group. Saving still POSTs to `createApi`.
+          full = await fetchFormData(blueprint.dataApi)
+            .then((body) => prefillRecord(blueprint.editForm ?? [], body))
+            .catch((err: unknown) => {
+              if (!cancelled) setPrefillError(message(err, 'Could not load the data for this form.'));
+              return undefined;
+            });
         }
         if (cancelled) return;
         setDetails(full);
@@ -121,5 +135,5 @@ export function useBlueprintForm({ blueprintApi, record, fallbackRecordId, onSav
   /** Product-level image URLs from the fetched details, per file-upload field (edit only). */
   const images = useMemo(() => existingImages(fields, details), [fields, details]);
 
-  return { load, fields, values, errors, setValue, reset, submit, saving, saveError, images };
+  return { load, fields, values, errors, setValue, reset, submit, saving, saveError, prefillError, images };
 }

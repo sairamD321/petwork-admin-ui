@@ -1,5 +1,5 @@
 import type { DataRecord } from '../../api/records';
-import { cardOfferOf, cartVariantIdOf, productCardTitleOf } from './cellValue';
+import { cardOfferOf, cartKeyOf, productCardTitleOf } from './cellValue';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -102,7 +102,7 @@ export function toProductView(root: DataRecord, clickedVariantId: string | undef
     const offer = cardOfferOf({ variants: [{ ...v, isDefault: true }] });
     const own = imagesOf(v);
     return {
-      id: cartVariantIdOf(v),
+      id: cartKeyOf(v),
       size: offer.size,
       mrp: offer.mrp,
       price: offer.price,

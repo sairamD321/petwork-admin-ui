@@ -12,7 +12,7 @@ import {
 import type { DataRecord } from '../../api/records';
 import {
   CARD_TITLE_FIELD_NAMES,
-  cartVariantIdOf,
+  cartKeyOf,
   cardOfferOf,
   formatValue,
   isImageColumn,
@@ -123,12 +123,12 @@ export default function DataTableView({
     productCardTitleOf(r, titleField ? formatValue(r[titleField]) : '');
 
   const cartOf = (r: DataRecord) => {
-    const variantId = cartVariantIdOf(r);
+    const cartKey = cartKeyOf(r);
     return {
-      variantId,
-      quantity: variantId ? (cart.quantities[variantId] ?? 0) : 0,
+      cartKey,
+      quantity: cartKey ? (cart.quantities[cartKey] ?? 0) : 0,
       onQuantityChange: (quantity: number) => {
-        if (variantId) cart.setQuantity(variantId, quantity);
+        if (cartKey) cart.setQuantity(cartKey, quantity);
       },
     };
   };

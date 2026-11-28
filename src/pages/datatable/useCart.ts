@@ -12,9 +12,9 @@ export type CartLoad =
 export interface CartController {
   /** The row action that adds to the cart (its `createApi` takes the POSTs); undefined when there is none. */
   addAction: BlueprintAction | undefined;
-  /** Quantity per variant id, as last accepted by the backend. Shared by product cards and the cart panel. */
+  /** Quantity per cart key (variant id, or `upc:<code>`), as last accepted by the backend. Shared by product cards and the cart panel. */
   quantities: Record<string, number>;
-  setQuantity: (variantId: string, quantity: number) => void;
+  setQuantity: (cartKey: string, quantity: number) => void;
   /** The full saved cart, loaded by `reload` (e.g. when the cart panel opens). */
   load: CartLoad;
   reload: () => void;
@@ -44,7 +44,7 @@ export function useCart(blueprint: DataTableBlueprint | null): CartController {
         if (cancelled) return;
         setLoad({ status: 'ready', cart });
         // The saved cart is the truth: replace every quantity with what it holds.
-        setQuantities(Object.fromEntries(cart.items.map((i) => [i.variantId, i.quantity])));
+        setQuantities(Object.fromEntries(cart.items.map((i) => [i.key, i.quantity])));
       })
       .catch((err: unknown) => {
         if (!cancelled) setLoad({ status: 'error', message: err instanceof Error ? err.message : 'Could not load the cart.' });
@@ -54,8 +54,8 @@ export function useCart(blueprint: DataTableBlueprint | null): CartController {
     };
   }, [cartApi, loadCount]);
 
-  const setQuantity = useCallback((variantId: string, quantity: number) => {
-    setQuantities((q) => ({ ...q, [variantId]: quantity }));
+  const setQuantity = useCallback((cartKey: string, quantity: number) => {
+    setQuantities((q) => ({ ...q, [cartKey]: quantity }));
   }, []);
 
   // Keeps an already-loaded cart on screen while the fresh copy loads, so the panel doesn't flash.

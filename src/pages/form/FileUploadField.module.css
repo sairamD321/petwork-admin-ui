@@ -1,0 +1,90 @@
+/* Upload box: picked files as thumbnails, plus a "+" tile to add another. */
+.box {
+  padding: 10px;
+  border: 1px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  transition: border-color 200ms ease;
+}
+
+.box:hover:not([data-disabled]) {
+  border-color: var(--mantine-color-indigo-4);
+}
+
+.box[data-error] {
+  border-color: var(--mantine-color-error);
+}
+
+.box[data-disabled] {
+  opacity: 0.6;
+}
+
+.item {
+  width: 72px;
+}
+
+.thumbWrap {
+  position: relative;
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-indigo-3);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+  cursor: zoom-in;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px -4px rgb(45 81 143 / 0.35);
+}
+
+.remove {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 1;
+  background: var(--mantine-color-red-6);
+  color: var(--mantine-color-white);
+  border: 2px solid var(--mantine-color-body);
+}
+
+.name {
+  margin-top: 4px;
+}
+
+.addTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 72px;
+  height: 72px;
+  border: 1.5px dashed var(--mantine-color-indigo-3);
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-indigo-6);
+  background: var(--mantine-color-indigo-0);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.addTile:hover:not(:disabled) {
+  border-color: var(--mantine-color-indigo-6);
+  background: var(--mantine-color-indigo-1);
+}
+
+.addTile:disabled {
+  cursor: not-allowed;
+}
+
+.previewStage {
+  overflow: hidden;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}

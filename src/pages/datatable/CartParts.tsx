@@ -85,10 +85,10 @@ function ItemRow({ item, quantity, cart, updateAction, imageUrl }: {
         <Box style={{ flexShrink: 0 }}>
           <CartStepper
             action={updateAction}
-            variantId={item.variantId}
+            cartKey={item.key}
             quantity={quantity}
             tone="solid"
-            onQuantityChange={(q) => cart.setQuantity(item.variantId, q)}
+            onQuantityChange={(q) => cart.setQuantity(item.key, q)}
           />
         </Box>
       )}
@@ -167,14 +167,14 @@ export function ItemsCard({ summary, cart, updateAction, fallbackImages, title =
       </Group>
       <Stack gap="md">
         {lines.map((l, i) => (
-          <Box key={l.item.variantId}>
+          <Box key={l.item.key}>
             {i > 0 && <Divider mb="md" color="gray.1" />}
             <ItemRow
               item={l.item}
               quantity={l.quantity}
               cart={cart}
               updateAction={updateAction}
-              imageUrl={l.item.imageUrl ?? fallbackImages?.[l.item.variantId]}
+              imageUrl={l.item.imageUrl ?? fallbackImages?.[l.item.key]}
             />
           </Box>
         ))}

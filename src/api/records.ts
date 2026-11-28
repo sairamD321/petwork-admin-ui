@@ -1,5 +1,6 @@
 import { resolveApiPath, resolveRecordPath } from './blueprint';
 import { shareInFlight } from './cache';
+import { LEGACY_ID_NAMES, parseCartKey, toCartKey, UPC_NAMES, VARIANT_ID_NAMES } from './cartKey';
 import { apiRequest } from './client';
 import { productCardTitleOf } from '../pages/datatable/cellValue';
 
@@ -98,6 +99,14 @@ export async function fetchRecord(dataApi: string, recordId: string): Promise<Da
   return unwrapRecord(await apiRequest<unknown>(resolveRecordPath(dataApi, recordId)));
 }
 
+/**
+ * GET a form blueprint's `dataApi` as-is, for prefilling a form opened without a record
+ * (e.g. the "Transfer" form filled from the transfer cart). The raw body is read by `prefillRecord`.
+ */
+export function fetchFormData(dataApi: string): Promise<unknown> {
+  return apiRequest<unknown>(resolveApiPath(dataApi));
+}
+
 /** The one record in a response: bare, or inside `{ records: [..] }`, `{ record }` or `{ data }`. */
 function unwrapRecord(body: unknown): DataRecord {
   const isObject = (v: unknown): v is DataRecord => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -110,10 +119,13 @@ function unwrapRecord(body: unknown): DataRecord {
   return body;
 }
 
-/** GET a "view" action's `dataApi` for one variant (`{variantId}` filled in), always fresh. */
-export async function fetchVariantDetails(dataApi: string, variantId: string): Promise<DataRecord> {
-  const id = encodeURIComponent(variantId);
-  const path = dataApi.replace(/\{(variantId|varientId|recordId|id)\}/gi, id);
+/**
+ * GET a "view" action's `dataApi` for one variant, always fresh. The cart key's value (variant id or UPC)
+ * fills the placeholder: `{variantId}`, `{upc}`, `{recordId}` or `{id}`.
+ */
+export async function fetchVariantDetails(dataApi: string, cartKey: string): Promise<DataRecord> {
+  const id = encodeURIComponent(parseCartKey(cartKey).value);
+  const path = dataApi.replace(/\{(variantId|varientId|upc|recordId|id)\}/gi, id);
   return unwrapRecord(await apiRequest<unknown>(resolveApiPath(path)));
 }
 
@@ -127,19 +139,21 @@ export function updateRecord(createApi: string, recordId: string | undefined, bo
 }
 
 /**
- * POST a variant's cart quantity to a row action's `createApi` (e.g. `/products/platform/{version}/api/cart`).
+ * POST a cart quantity to a row action's `createApi` (e.g. `/products/platform/{version}/api/cart`):
+ * `{ variantId, quantity }`, or `{ upc, quantity }` for products identified by UPC.
  * Sent on "Add to Cart" and on every +/- after it, always with the new total quantity.
  */
-export function setCartQuantity(createApi: string, variantId: string, quantity: number) {
-  return apiRequest<unknown>(resolveApiPath(createApi), { method: 'POST', body: { variantId, quantity } });
+export function setCartQuantity(createApi: string, cartKey: string, quantity: number) {
+  const { type, value } = parseCartKey(cartKey);
+  return apiRequest<unknown>(resolveApiPath(createApi), { method: 'POST', body: { [type]: value, quantity } });
 }
 
-const VARIANT_ID_KEYS = ['variantId', 'varientId', 'variant_id'];
 const QUANTITY_KEYS = ['quantity', 'qty', 'cartQuantity', 'count'];
 
 /** One line of the saved cart, with whatever display details the backend sends. */
 export interface CartItem {
-  variantId: string;
+  /** Variant id, or `upc:<code>` (see `api/cartKey.ts`). */
+  key: string;
   quantity: number;
   name?: string;
   size?: string;
@@ -209,9 +223,12 @@ function findImage(node: unknown, underImageKey = false, depth = 0): string | un
 function toCartItem(o: Obj): CartItem | undefined {
   const variant = isObj(o.variant) ? o.variant : undefined;
   const product = isObj(o.product) ? o.product : undefined;
-  const id = pick(o, VARIANT_ID_KEYS) ?? pick(variant, ['id', '_id', ...VARIANT_ID_KEYS]);
+  // Variant id when there is one, else the UPC (new backend).
+  const variantId = text(pick(o, VARIANT_ID_NAMES) ?? pick(variant, [...VARIANT_ID_NAMES, ...LEGACY_ID_NAMES]));
+  const upc = text(pick(o, UPC_NAMES) ?? pick(variant, UPC_NAMES) ?? pick(product, UPC_NAMES));
+  const key = variantId !== undefined ? toCartKey('variantId', variantId) : upc !== undefined ? toCartKey('upc', upc) : undefined;
   const quantity = num(pick(o, QUANTITY_KEYS));
-  if (text(id) === undefined || quantity === undefined || quantity <= 0) return undefined;
+  if (key === undefined || quantity === undefined || quantity <= 0) return undefined;
 
   const from = (keys: string[]) => pick(o, keys) ?? pick(variant, keys) ?? pick(product, keys);
   const unitSize = text(from(['unitSize', 'size', 'packSize', 'weight']));
@@ -222,7 +239,7 @@ function toCartItem(o: Obj): CartItem | undefined {
   const image = findImage(o);
 
   return {
-    variantId: String(id),
+    key,
     quantity,
     // Same title as the product cards (brand + name + flavour + ...), else the plain name.
     name: productCardTitleOf(o) || text(from(['productName', 'name', 'title', 'displayName'])),
@@ -245,7 +262,7 @@ const CHARGE_LABELS: Record<string, string> = {
 
 /**
  * GET the saved cart. The response shape isn't fixed, so this walks it and takes every object with a
- * variant id (`variantId`, or `variant.id`) and a quantity as a line; bill amounts are read off the top.
+ * variant id (`variantId`, or `variant.id`) or a UPC, and a quantity, as a line; bill amounts are read off the top.
  */
 export async function fetchCart(cartApi: string): Promise<Cart> {
   const body = await apiRequest<unknown>(resolveApiPath(cartApi));
@@ -274,10 +291,13 @@ export async function fetchCart(cartApi: string): Promise<Cart> {
   return { items, charges, grandTotal };
 }
 
-/** DELETE `{createApi}/{variantId}`: takes the variant out of the cart (the POST won't accept quantity 0). */
-export function removeFromCart(createApi: string, variantId: string) {
+/**
+ * DELETE `{createApi}/{variantId}` (or `{createApi}/{upc}`): takes the line out of the cart
+ * (the POST won't accept quantity 0).
+ */
+export function removeFromCart(createApi: string, cartKey: string) {
   const path = resolveApiPath(createApi).replace(/\/+$/, '');
-  return apiRequest<unknown>(`${path}/${encodeURIComponent(variantId)}`, { method: 'DELETE' });
+  return apiRequest<unknown>(`${path}/${encodeURIComponent(parseCartKey(cartKey).value)}`, { method: 'DELETE' });
 }
 
 /** DELETE a record through a row action's `dataApi`. */
